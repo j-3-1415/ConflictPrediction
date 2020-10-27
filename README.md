@@ -2,11 +2,7 @@
 #######################>>>>>>>NOTES TO GROUP<<<<<<<<<###########################
 ################################################################################
 
-# Note to fellow group members! I think we can differentiate tasks through the
-# table of contents. The next code To-Do is being handled by Jacob, which is
-# indicated in section 2 of the table of contents
-
-''' Comment: In my opinion the paper is structured like the following: 
+Comment: In my opinion the paper is structured like the following: 
 	
 	(## no need to replicate ##)
     0) Topic modelling: Preprocessing, LDA, Gibbs sampler
@@ -60,7 +56,6 @@
 		3.1 Topics harmonized to baseline year 2013
 		3.2 LASSO (three parameters of selectivity: 100, 150 & 200 for both y
 		3.3 Robustness checks (excluding conflict topics)
-'''
 
 ################################################################################
 ######################>>>>>>>END NOTES SECTION<<<<<<<<<#########################
@@ -71,16 +66,16 @@
 #########################>>>>>>>>MODEL NOTES<<<<<<<<<###########################
 ################################################################################
 
-# Conflict Types
-#	Stata Variable Name: "conflict_type"
-#		2 = Armed Conflict = 'bdbest25'
-#		3 = Civil Way = 'bdbest1000'
+Conflict Types
+	Stata Variable Name: "conflict_type"
+	2 = Armed Conflict = 'bdbest25'
+	3 = Civil Way = 'bdbest1000'
 
-# Incidence vs. Onset
-#	Stata Variable Name: "cheat" / "included"
-#		1 = onset
-#		NULL = incidence
-#		Remove 1 or NULL for dependent variable
+Incidence vs. Onset
+	Stata Variable Name: "cheat" / "included"
+	1 = onset
+	NULL = incidence
+	Remove 1 or NULL for dependent variable
 
 ################################################################################
 ######################>>>>>>>>>END MODEL NOTES<<<<<<<<<#########################
