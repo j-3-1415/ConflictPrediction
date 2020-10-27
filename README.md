@@ -1,45 +1,82 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+################################################################################
+#######################>>>>>>>NOTES TO GROUP<<<<<<<<<###########################
+################################################################################
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
+Comment: In my opinion the paper is structured like the following: 
+	
+	(## no need to replicate ##)
+    0) Topic modelling: Preprocessing, LDA, Gibbs sampler
 
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
+	(### no need to replicate ###)
+    1) Argument for relevance of within variation through apllication of model
+       to existing models from literature
+		1.1 Rainfall: Miguel & Satyanath (2011)
+		1.2 External economic shocks and political constrains: Besley & Presson(2011b)
+		1.3 Political institution dummies: Goldstone et al. (2010)
+		1.4 ICEWS conflict events: Ward et al. (2013)
+		1.5 Keyword counts: Chadefaux (2014)
+		1.6 Country fixed effects only
 
----
+    2) Topic model
 
-## Edit a file
+    	(### very important to REPLICATE ###)
+		2.1 Performance of topic model
+		    2.1.1 run fixed effects estimation to obtain fitted values
+	        2.1.2 take fitted values (overall and within model) and create
+	                  binary variable depending on cutoff value c
+	        2.1.3 Compare forecast (binary variable) with realized values and create
+	              Graph ROC curves of model performance
+		    ## note: important to have different samples and time horizons T in mind
+		
+		(### no need to replicate ###)
+		2.2 Robustness checks
+	        2.2.1 Conflict incidence
+		    2.2.2 Varying number of topics
+		    2.2.3 Topics with other confounders
+			  2.2.3.1 Political regime dummies, infant mortality, share of
+	                  population descriminated against, dummy if neighboring
+	                  countries in conflict
+			  2.2.3.2 Conflict escalation: ongoing armed conflict as
+	                  predictor for civil war
+		    2.2.4 Changing definition of conflict
+			  2.2.4.1 all types of conflict (+external wars)
+			  2.2.4.2 battle-related deaths in internal wars
+			  2.2.4.3 data by Besley & Persson (2011b)
+			  2.2.4.4 conflict if >0.08 battle death per 1000 inhabitants
+			  2.2.4.5 upper bound estimations PRIO
+			  2.2.4.6 UNHCR refugees
+			  2.2.4.7 Two years forecast horizon
+		    2.2.5 By space and time
+		    2.2.6 Comparison to conflict events and keyword counts
+		    2.2.7 Neural-network approach
+		    2.2.8 Logit without country fixed effects
 
-You’ll start by editing this README file to learn how to edit a file in Bitbucket.
+	(### maybe relevant for later but not now ###)
+    3) Analysis why topics provide useful forecasting power on time dimension 
+		3.1 Topics harmonized to baseline year 2013
+		3.2 LASSO (three parameters of selectivity: 100, 150 & 200 for both y
+		3.3 Robustness checks (excluding conflict topics)
 
-1. Click **Source** on the left side.
-2. Click the README.md link from the list of files.
-3. Click the **Edit** button.
-4. Delete the following text: *Delete this line to make a change to the README from Bitbucket.*
-5. After making your change, click **Commit** and then **Commit** again in the dialog. The commit page will open and you’ll see the change you just made.
-6. Go back to the **Source** page.
+################################################################################
+######################>>>>>>>END NOTES SECTION<<<<<<<<<#########################
+################################################################################
 
----
 
-## Create a file
+################################################################################
+#########################>>>>>>>>MODEL NOTES<<<<<<<<<###########################
+################################################################################
 
-Next, you’ll add a new file to this repository.
+Conflict Types
+	Stata Variable Name: "conflict_type"
+	2 = Armed Conflict = 'bdbest25'
+	3 = Civil Way = 'bdbest1000'
 
-1. Click the **New file** button at the top of the **Source** page.
-2. Give the file a filename of **contributors.txt**.
-3. Enter your name in the empty file space.
-4. Click **Commit** and then **Commit** again in the dialog.
-5. Go back to the **Source** page.
+Incidence vs. Onset
+	Stata Variable Name: "cheat" / "included"
+	1 = onset
+	NULL = incidence
+	Remove 1 or NULL for dependent variable
 
-Before you move on, go ahead and explore the repository. You've already seen the **Source** page, but check out the **Commits**, **Branches**, and **Settings** pages.
-
----
-
-## Clone a repository
-
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
-
-1. You’ll see the clone button under the **Source** heading. Click that button.
-2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
-3. When you see the **Clone New** dialog in SourceTree, update the destination path and name if you’d like to and then click **Clone**.
-4. Open the directory you just created to see your repository’s files.
-
-Now that you're more familiar with your Bitbucket repository, go ahead and add a new file locally. You can [push your change back to Bitbucket with SourceTree](https://confluence.atlassian.com/x/iqyBMg), or you can [add, commit,](https://confluence.atlassian.com/x/8QhODQ) and [push from the command line](https://confluence.atlassian.com/x/NQ0zDQ).
+################################################################################
+######################>>>>>>>>>END MODEL NOTES<<<<<<<<<#########################
+################################################################################
