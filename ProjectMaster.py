@@ -384,7 +384,7 @@ for col in complete_file.columns:
 theta_years = list(range(1995, 2015))
 
 # specify the controls you want to use
-own = ['refugees', 'goodinst']
+own = ['region_o', 'subregion_o', 'discrimshare']
 
 # in the paper they specify different sets of controls
 control_sets = {
@@ -518,6 +518,173 @@ def xtsum(data, labs, indiv, time):
 		df.fillna("", inplace = True)
 
 		return(df)
+
+# return the summary dataframe
+# df = xtsum(master2013, labs, 'countryid', 'year')
+# Write the dataframe to latex with a few extra formatting add ons
+# df.to_latex("xtsum.tex", bold_rows = True, multirow = True,
+#	float_format = "{:0.3f}".format)
+
+################################################################################
+###########################>>>>>>>SECTION 3.5<<<<<<<<<##########################
+#####################>>>>>>>>Visual Analysis<<<<<<<#############################
+################################################################################
+
+# 1. limit countries to the ones that experienced both peace and conflict (check sd?)
+conflict_std = master2013.groupby('countryid')[['bdbest25']].std()
+conflict_countries = list(conflict_std[conflict_std['bdbest25'] != 0].index.values)
+
+master2013_conflict = master2013[master2013.countryid.isin(conflict_countries)]
+
+# 2. match country codes to make assessment more intuitive
+country_names = FileRead('CountryID')
+master2013_conflict = master2013_conflict.merge(country_names, on='countryid',
+                                                how='left')  # .drop(['bdbest25', 'bdbest1000'], axis=1)
+
+master2013_conflict_long = pd.melt(master2013_conflict, id_vars=['country', 'year'],
+                                   value_vars=[col for col in master2013_conflict if col.startswith('ste')])
+master2013_conflict_long = master2013_conflict_long.merge(
+    master2013_conflict[['country', 'year', 'bdbest25', 'bdbest1000']]
+    , on=['country', 'year'], how='left')
+
+# 3. joint theta development not distinguishing between countries
+sns.lineplot(data=master2013_conflict_long, x="year", y="value", hue="variable")
+plt.savefig(currDir + str('/Output/thetas_total.png'))
+plt.close()
+
+# 4. each country individually
+fig, axes = plt.subplots(nrows=15, ncols=6)
+# fig.subplots_adjust(hspace=0.7)
+
+for ax, country in zip(axes.flatten(), master2013_conflict_long['country'].unique()):
+    dat = master2013_conflict_long[master2013_conflict_long['country'] == country]
+    conflict_years = dat[dat['bdbest25'] == 1].year.unique()
+    for year in conflict_years:
+        ax.axvline(year, color='red')
+    sns.lineplot(data=dat, x="year", y="value", hue="variable", ax=ax)
+    ax.set(title=str(country))
+    ax.get_legend().remove()
+
+handles, labels = fig.axes[-2].get_legend_handles_labels()
+fig.legend(handles, labels, loc='lower center', ncol=4)
+fig.set_size_inches(25, 25)
+fig.tight_layout(rect=[0, 0.04, 1, 0.96])
+fig.suptitle('Distributions of thetas per country')
+fig.savefig(currDir + str('/Output/thetas_perCountry.png'), dpi=100)
+plt.close(fig)
+
+# replicate this exercise for regions
+# 1. rebuild master since we need region controls (can be extended)
+sum_cols = ['year', 'countryid', 'region_o']
+sum_cols.extend([col for col in master.columns if '_theta' in col])
+
+master_region = master[master['theta_year'] == 2013][sum_cols]
+master_region.reset_index(inplace=True)
+master_region.drop('index', axis=1, inplace=True)
+
+master_region_conflict = master_region[master_region.countryid.isin(conflict_countries)]
+master_region_conflict_long = pd.melt(master_region_conflict,
+                                      id_vars=['region_o', 'year'],
+                                      value_vars=[col for col in master_region_conflict if col.startswith('ste')])
+
+master_region_conflict_long = master_region_conflict_long[master_region_conflict_long['region_o'] != '']
+
+# 2. plot for each region
+fig, axes = plt.subplots(nrows=3, ncols=2)
+# fig.subplots_adjust(hspace=0.7)
+
+for ax, region in zip(axes.flatten(), master_region_conflict_long['region_o'].unique()):
+    dat = master_region_conflict_long[master_region_conflict_long['region_o'] == region]
+    sns.lineplot(data=dat, x="year", y="value", hue="variable", ax=ax)
+    ax.set(title=str(region))
+    ax.get_legend().remove()
+
+handles, labels = fig.axes[-2].get_legend_handles_labels()
+fig.legend(handles, labels, loc='lower center', ncol=4)
+fig.set_size_inches(18.5, 18.5)
+fig.tight_layout(rect=[0, 0.04, 1, 0.96])
+fig.suptitle('Distributions of thetas per region')
+fig.savefig(currDir + str('/Output/thetas_perRegion.png'), dpi=100)
+plt.close(fig)
+
+# replicate this exercise for subregions
+# 1. rebuild master since we need subregion controls (can be extended)
+sum_cols = ['year', 'countryid', 'subregion_o']
+sum_cols.extend([col for col in master.columns if '_theta' in col])
+
+master_subregion = master[master['theta_year'] == 2013][sum_cols]
+master_subregion.reset_index(inplace=True)
+master_subregion.drop('index', axis=1, inplace=True)
+
+master_subregion_conflict = master_subregion[master_subregion.countryid.isin(conflict_countries)]
+master_subregion_conflict_long = pd.melt(master_subregion_conflict,
+                                         id_vars=['subregion_o', 'year'],
+                                         value_vars=[col for col in master_subregion_conflict if col.startswith('ste')])
+
+master_subregion_conflict_long = master_subregion_conflict_long[master_subregion_conflict_long['subregion_o'] != '']
+
+# 2. plot for each region
+fig, axes = plt.subplots(nrows=6, ncols=3)
+# fig.subplots_adjust(hspace=0.7)
+
+for ax, subregion in zip(axes.flatten(), master_subregion_conflict_long['subregion_o'].unique()):
+    dat = master_subregion_conflict_long[master_subregion_conflict_long['subregion_o'] == subregion]
+    sns.lineplot(data=dat, x="year", y="value", hue="variable", ax=ax)
+    ax.set(title=str(subregion))
+    ax.get_legend().remove()
+
+handles, labels = fig.axes[-2].get_legend_handles_labels()
+fig.legend(handles, labels, loc='lower center', ncol=4)
+fig.set_size_inches(18.5, 18.5)
+fig.tight_layout(rect=[0, 0.04, 1, 0.96])
+fig.suptitle('Distributions of thetas per subregion')
+fig.savefig(currDir + str('/Output/thetas_perSubregion.png'), dpi=100)
+plt.close(fig)
+
+# scatter of % discrimination vs theta
+sum_cols = ['year', 'countryid', 'discrimshare']
+sum_cols.extend([col for col in master.columns if '_theta' in col])
+
+master_discrim = master[master['theta_year'] == 2013][sum_cols]
+master_discrim.reset_index(inplace=True)
+master_discrim.drop('index', axis=1, inplace=True)
+
+master_discrim_sub = master_discrim[
+    (master_discrim.countryid.isin(conflict_countries)) & master_discrim.discrimshare != 0]
+master_discrim_sub_l = pd.melt(master_discrim_sub,
+                               id_vars=['countryid', 'year', 'discrimshare'],
+                               value_vars=[col for col in master_discrim_sub if col.startswith('ste')])
+
+# plot for each year
+fig, axes = plt.subplots(nrows=8, ncols=5)
+
+for ax, year in zip(axes.flatten(), master_discrim_sub_l['year'].unique()):
+    dat = master_discrim_sub_l[master_discrim_sub_l['year'] == year]
+    sns.scatterplot(data=dat, x="discrimshare", y="value", hue="variable", ax=ax)
+    ax.set(title=str(year))
+    ax.get_legend().remove()
+
+handles, labels = fig.axes[-2].get_legend_handles_labels()
+fig.legend(handles, labels, loc='lower center', ncol=4)
+fig.set_size_inches(18.5, 18.5)
+fig.tight_layout(rect=[0, 0.04, 1, 0.96])
+fig.suptitle('Thetas vs. share of discrimination per year')
+fig.savefig(currDir + str('/Output/thetas_discrim.png'), dpi=100)
+plt.close(fig)
+
+# conflict map to visualize variation in dependent variable
+master2013_map = master2013.groupby(['countryid'])['bdbest25'].sum().reset_index()
+
+master2013_map = master2013_map.merge(complete_file[['isocode', 'countryid', 'country']].drop_duplicates(subset=['isocode'], keep='first'),
+                                      on='countryid', how='left')
+
+fig = px.choropleth(master2013_map, locations="isocode",
+                    color="bdbest25",  # lifeExp is a column of gapminder
+                    hover_name="country",  # column to add to hover information
+                    color_continuous_scale=px.colors.sequential.Reds)
+
+fig.write_html(currDir + '/Output/conflict_map.html')
+
 
 print("=======================================================================")
 print("Finished Running Code in Section 3")
