@@ -67,6 +67,7 @@ from itertools import product
 import statsmodels.api as sm
 from econtools import outreg
 import econtools.metrics as mt
+from stargazer.stargazer import Stargazer
 
 global currDir #Define global variable of current directory
 global local #Define global variable of input for file source
@@ -160,7 +161,8 @@ labs = {'year' : 'Article Year', 'theta_year' : 'Topic Year',
 	'ste_theta10' : 'Topic 11 Share', 'ste_theta11' : 'Topic 12 Share',
 	'ste_theta12' : 'Topic 13 Share', 'ste_theta13' : 'Topic 14 Share',
 	'ste_theta14' : 'Topic 15 Share', 'bdbest1000' : "Civil War",
-	'bdbest25' : "Armed Conflict"}
+	'bdbest25' : "Armed Conflict", "autoc" : "Autocracy", 
+	"democ" : 'Democracy', 'const' : 'Constant'}
 
 print("=======================================================================")
 print("Finished Running Code in Section 1")
@@ -195,6 +197,10 @@ own = ['region_o', 'subregion_o', 'discrimshare']
 #Include the desired interaction variables to be include in master dataframe
 interactions = ['autoc']
 own.extend(interactions)
+
+labs.update({"ste_theta" + str(i) + "X" + inter : \
+	labs["ste_theta" + str(i)] + " by " + labs[inter] \
+	for i in range(0, 15) for inter in interactions})
 
 # in the paper they specify different sets of controls
 # control_sets = {
@@ -660,24 +666,15 @@ def run_model(data, params):
 			data[cols] = data[thetas].multiply(data[interact], axis = 'index')
 			regressors.extend(cols)
 
-	data = data.reset_index()
-
-	for year in data['year'].unique()[1:]:
-		data['Dummy_' + str(year)] = np.where(data['year'] == year, 1, 0)
-
-	regressors.extend([x for x in data.columns if "Dummy_" in x])
-
 	#Add all of the independent regressors to the exog matrix
 	exog = data[regressors]
 	exog = sm.add_constant(exog)
 
-	#Run the model as specified with the FE boolean in the inputs
-	model = mt.reg(data, 'one_before', regressors,
-		fe_name = 'countryid', cluster = 'countryid',
-		vce_type = "cluster", addcons = True)
+	model = PanelOLS(data['one_before'], exog,
+		entity_effects = FE, time_effects = True)
 
-	# model = PanelOLS(data['one_before'], exog,
-	# 	entity_effects = FE, time_effects = True)
+	model = model.fit(cov_type = 'clustered', cluster_entity = True)
+
 	return(model)
 
 def pred_model(data, model, params):
@@ -727,7 +724,7 @@ def pred_model(data, model, params):
 	exog = sm.add_constant(exog)
 
 	#Use the model to predict the t + 1 values for the chosen conflict
-	preds = model.fit().predict(exog)
+	preds = model.predict(exog)
 	preds.reset_index(inplace = True) #Reset the index
 
 	#Condition for whether to break the predictions down by fixed and within
@@ -737,7 +734,7 @@ def pred_model(data, model, params):
 		preds = preds.rename({'predictions' : 'within_pred'}, axis = 1)
 
 		#Get the estimated fixed effects (alpha) per country
-		fixef = model.fit().estimated_effects
+		fixef = model.estimated_effects
 
 		fixef = fixef.reset_index() #Reset the index
 
@@ -758,6 +755,74 @@ def pred_model(data, model, params):
 
 	return(preds)
 
+#Define function to output latex regression table
+def out_latex(model, labs, model_params, file, type):
+
+	############################################################################
+	#Input Notes
+	############################################################################	
+	#model should be fit object returned by run_model function
+	#labs should be the label dictionary defined near beginining of script
+	#model_params should be dictionary used in run_model function
+	#file should be the file path to write latex string to
+	#If type is custom then implements latex table written by hand, else
+	#	the latex table is the one constructed by python (a little busy)
+	############################################################################
+	#Input Notes
+	############################################################################
+
+	if type == 'custom': #Condition to create approximation of stargazer output
+
+		params = model.params.values #Get coefficient values
+		errors = model.std_errors.values #Get standard error values
+		pvals = model.pvalues.values #Get the pvalue values
+		lab_list = [labs[i] for i in fit.params.index] #List of Labels
+
+		#Define the beginning of latex tabular to be put within table definition
+		string = "\\begin{center}\n\\begin{tabular}{lc}\n" + \
+			"\\\\[-1.8ex]\\hline\n" + \
+			"& $\\textbf{" + model_params['dep_var'] + "}$ \\\\\n" + \
+			"\\hline \\\\[-1.8ex]\n"
+
+		#Iterate through the number of coefficients
+		for i in range(len(lab_list)):
+			string += lab_list[i] + " & " + str("{:.4f}".format(params[i]))
+
+			#Include the p value stars depending on the value
+			if pvals[i] <= 0.01:
+				string += "$^{***}$"
+			elif pvals[i] <= 0.05:
+				string += "$^{**}$"
+			elif pvals[i] <= 0.1:
+				string += "$^{*}$"
+
+			#Add the errors below the coefficients
+			string += " \\\\\n & (" + str("{:.4f}".format(errors[i])) + \
+				") \\\\ \n"
+
+		#Finish the tabular definition
+		string += "\\hline \\\\[-1.8ex]\n\\end{tabular}\n\\end{center}"
+
+		#Include notes for included effects and for robust standard errors
+		string += "\nIncluded Effects: Time" + \
+			["", ", Entity"][model_params["FE"]]
+		string += "\nCluster Robust Standard Errors Used"
+
+	else: #Condition for if using base PanelOLS summary
+		string = model.summary.as_latex()
+
+		#Loop through the coefficient names to replace with the labels
+		for key in model.params.index:
+
+			pattern = "textbf{" + key.replace("_", "\_") + "}"
+			replace = "textbf{" + labs[key] + "}"
+			string = string.replace(pattern, replace)
+
+	#After creating latex string, write to tex file
+	with open(file, 'w') as f:
+		f.write(string)
+
+
 # compare_vars = ['tokens', 'bdbest25', 'one_before', 'avpop']
 
 # test = pd.read_stata(os.getcwd() + '/dataverse_files/data/test.dta')
@@ -767,20 +832,19 @@ model_params = {
 	"dep_var" : "bdbest25", #Civil War (1000) or Armed Conflict (25)
 	"onset" : True, #Onset of Incidence of Conflict
 	"all_indiv" : True, #Include all countries or not
-	"FE" : False, #Pooled Model or Fixed Effects
+	"FE" : True, #Pooled Model or Fixed Effects
 	'interactions' : None #Set of interaction vars (can be None)
 }
 
 model = run_model(master, model_params)
 print(model)
-print(model.fit())
-
-string = outreg(model, ['ste_theta1', 'const'], digits = 3)
 
 # data_compare(df, test, 1995, compare_vars, 'bdbest25', onset = True)
 
 preds = pred_model(master, model, model_params)
 print(preds)
+
+out_latex(model, labs, model_params, "FE_1995.tex", "python")
 
 print("=======================================================================")
 print("Finished Running Code in Section 4")
