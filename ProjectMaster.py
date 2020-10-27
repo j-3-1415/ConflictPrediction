@@ -5,96 +5,6 @@
 # Modifications: Writing skeleton of code, organizing file structure
 ######################=======================================>>>>>>>>>>>>>>>>>>>
 
-
-################################################################################
-#######################>>>>>>>NOTES TO GROUP<<<<<<<<<###########################
-################################################################################
-
-# Note to fellow group members! I think we can differentiate tasks through the
-# table of contents. The next code To-Do is being handled by Jacob, which is
-# indicated in section 2 of the table of contents
-
-''' Comment: In my opinion the paper is structured like the following: 
-	
-	(## no need to replicate ##)
-    0) Topic modelling: Preprocessing, LDA, Gibbs sampler
-
-	(### no need to replicate ###)
-    1) Argument for relevance of within variation through apllication of model
-       to existing models from literature
-		1.1 Rainfall: Miguel & Satyanath (2011)
-		1.2 External economic shocks and political constrains: Besley & Presson(2011b)
-		1.3 Political institution dummies: Goldstone et al. (2010)
-		1.4 ICEWS conflict events: Ward et al. (2013)
-		1.5 Keyword counts: Chadefaux (2014)
-		1.6 Country fixed effects only
-
-    2) Topic model
-
-    	(### very important to REPLICATE ###)
-		2.1 Performance of topic model
-		    2.1.1 run fixed effects estimation to obtain fitted values
-	        2.1.2 take fitted values (overall and within model) and create
-	                  binary variable depending on cutoff value c
-	        2.1.3 Compare forecast (binary variable) with realized values and create
-	              Graph ROC curves of model performance
-		    ## note: important to have different samples and time horizons T in mind
-		
-		(### no need to replicate ###)
-		2.2 Robustness checks
-	        2.2.1 Conflict incidence
-		    2.2.2 Varying number of topics
-		    2.2.3 Topics with other confounders
-			  2.2.3.1 Political regime dummies, infant mortality, share of
-	                  population descriminated against, dummy if neighboring
-	                  countries in conflict
-			  2.2.3.2 Conflict escalation: ongoing armed conflict as
-	                  predictor for civil war
-		    2.2.4 Changing definition of conflict
-			  2.2.4.1 all types of conflict (+external wars)
-			  2.2.4.2 battle-related deaths in internal wars
-			  2.2.4.3 data by Besley & Persson (2011b)
-			  2.2.4.4 conflict if >0.08 battle death per 1000 inhabitants
-			  2.2.4.5 upper bound estimations PRIO
-			  2.2.4.6 UNHCR refugees
-			  2.2.4.7 Two years forecast horizon
-		    2.2.5 By space and time
-		    2.2.6 Comparison to conflict events and keyword counts
-		    2.2.7 Neural-network approach
-		    2.2.8 Logit without country fixed effects
-
-	(### maybe relevant for later but not now ###)
-    3) Analysis why topics provide useful forecasting power on time dimension 
-		3.1 Topics harmonized to baseline year 2013
-		3.2 LASSO (three parameters of selectivity: 100, 150 & 200 for both y
-		3.3 Robustness checks (excluding conflict topics)
-'''
-
-################################################################################
-######################>>>>>>>END NOTES SECTION<<<<<<<<<#########################
-################################################################################
-
-
-################################################################################
-#########################>>>>>>>>MODEL NOTES<<<<<<<<<###########################
-################################################################################
-
-# Conflict Types
-#	Stata Variable Name: "conflict_type"
-#		2 = Armed Conflict = 'bdbest25'
-#		3 = Civil Way = 'bdbest1000'
-
-# Incidence vs. Onset
-#	Stata Variable Name: "cheat" / "included"
-#		1 = onset
-#		NULL = incidence
-#		Remove 1 or NULL for dependent variable
-
-################################################################################
-######################>>>>>>>>>END MODEL NOTES<<<<<<<<<#########################
-################################################################################
-
-
 ################################################################################
 ######################>>>>>>>TABLE OF CONTENTS<<<<<<<<<#########################
 ################################################################################
@@ -113,6 +23,8 @@
 
 	#Descriptive statistics of data condusive to panel analysis, 
 	#		i.e. pulled from class
+	#		Also graphical analysis
+	#		Luca can do his simulation in this section?
 
 	######################>>>>>>>SECTION 4<<<<<<<<<#############################
 
@@ -130,7 +42,6 @@
 ################################################################################
 ####################>>>>>>>END TABLE OF CONTENTS<<<<<<<<<#######################
 ################################################################################
-
 
 ################################################################################
 ###########################>>>>>>>SECTION 1<<<<<<<<<############################
@@ -154,9 +65,12 @@ from linearmodels.panel import PooledOLS, BetweenOLS, RandomEffects
 from linearmodels.panel import PanelOLS, compare
 from itertools import product
 import statsmodels.api as sm
+from econtools import outreg
+import econtools.metrics as mt
 
 global currDir #Define global variable of current directory
 global local #Define global variable of input for file source
+global FileDict #Define global variable for file importation
 
 currDir = os.getcwd() #Define current directory based on python script
 
@@ -164,183 +78,76 @@ currDir = os.getcwd() #Define current directory based on python script
 local = input("""Import data Locally? 'True' or 'False': 
 	If 'False' Then Comes from Dropbox Online: """)
 
-#Create text input based on true/false flag from user input
-local = ['Dropbox', 'Local'][local == 'True']
+#Create a dictionary of files paths for dropbox. Used in FileRead function
+FileDict = {
+	'Topics' : ["wz1azpy6teayyzr", "topics.csv"],
+	'TopicID' : ["ofgtf9ltq9eb8vt", "TopicID.csv"],
+	'CountryID' : ["6je8xdzg63krmw5", "countryids.dta"],
+	'EventData' : ["b1aahhlke2gd1n6", "eventdata.dta"],
+	'CompleteMain' : ["srgz7t7k5t3omws", "complete_main_new.dta"],
+	'CompleteMain_OG' : ["qrud7n5ak4pcawk", "complete_main_new_original.dta"],
+	'ArticleCount' : ["vbz5dh78myqaa32", "article_count.dta"],
+	'Theta_1995' : ["xqqb03az8dh10xo"], 'Theta_1996' : ["kn0n9kuc9342wyi"],
+	'Theta_1997' : ["el9ltiga8fnyhnf"], 'Theta_1998' : ["kt9zo86nsgug18c"],
+	'Theta_1999' : ["3e90uysagsh5j6y"], 'Theta_2000' : ["yird2kmqyfx4qos"],
+	'Theta_2001' : ["ogbvafkck6uci1f"], 'Theta_2002' : ["dxybjz2nmc2wr1g"],
+	'Theta_2003' : ["47xseavooz97h3i"], 'Theta_2004' : ["uymak66cgwh3cqz"],
+	'Theta_2005' : ["pkcpx7n5kiiwmab"], 'Theta_2006' : ["20w1xwm9g3xoqxv"],
+	'Theta_2007' : ["xnseiqxoahbfmns"],	'Theta_2008' : ["bezx6p9wu0t8bxo"],
+	'Theta_2009' : ["cmfei42pxlmt3ca"], 'Theta_2010' : ["na35rztvy187dqi"],
+	'Theta_2011' : ["r7x0478sjos6six"], 'Theta_2012' : ["5y5on73oxb4fgpf"],
+	'Theta_2013' : ["of7mo0usbkqj82w"],	'Theta_2014' : ["vfe2xplgd2c9jw3"],
+	'Theta_2015' : ["fqdq5ax5sixy8om"],
+	'Theta_Full_1995' : ["z59vqlbrprczvnh"], 
+	'Theta_Full_1996' : ["zlhr25gr9tlcycg"],
+	'Theta_Full_1997' : ["nz8fqk6hh61f3v2"],
+	'Theta_Full_1998' : ["ej30ikb0b3sh88e"],
+	'Theta_Full_1999' : ["qqo39u38dqcqsve"],
+	'Theta_Full_2000' : ["5g1v084txwt17yb"],
+	'Theta_Full_2001' : ["wyh83n76aizguxr"],
+	'Theta_Full_2002' : ["11oq0swh40sk93q"],
+	'Theta_Full_2003' : ["v6x25dai1vbb481"],
+	'Theta_Full_2004' : ["mp0470zj7gag5de"],
+	'Theta_Full_2005' : ["ppcngl2qd3c53qq"],
+	'Theta_Full_2006' : ["q3n2p8j4y0iocka"],
+	'Theta_Full_2007' : ["u1z5j6d6v69dakh"],
+	'Theta_Full_2008' : ["zyk9x1ti0tc7ry5"],
+	'Theta_Full_2009' : ["z4rqncmntabs8iy"],
+	'Theta_Full_2010' : ["9yja3dqqw3rquis"],
+	'Theta_Full_2011' : ["4wnvqufctpvl1ms"],
+	'Theta_Full_2012' : ["p5bfd51fbwya7d4"],
+	'Theta_Full_2013' : ["j3ik866cvobs4rh"],
+	'Theta_Full_2014' : ["fr5mo5raw1a6s5a"],
+	'Theta_Full_2015' : ["3yit1p2sr3i7m0q"]}
 
-#Define general filename for theta files
-theta = "thetas15_alpha3_beta001_all_both_collapsed{}.dta"
-theta_db = "thetas15_alpha3_beta001_all_both_collapsed{}.dta?dl=1"
+#Create a function to read in the files based on codes within dictionaary
+def FileRead(KeyName):
 
-#Create a dictionary of files paths, both local and from dropbox
-#User will use these paths to download data into python
-#First layer is file name alias, second layer is choice between local or Dropbox
-files = {
-	'Topics' : {
-		'Dropbox' : "https://www.dropbox.com/s/wz1azpy6teayyzr/topics.csv?dl=1",
-		'Local' : "dataverse_files/data/topics.csv"},
-	'TopicID' : {
-		'Dropbox' : "https://www.dropbox.com/s/ofgtf9ltq9eb8vt/TopicID.csv?dl=1",
-		'Local' : "dataverse_files/data/TopicID.csv"},
-	'CountryID' : {
-		'Dropbox' : "https://www.dropbox.com/s/6je8xdzg63krmw5/countryids.dta?dl=1",
-		'Local' : "dataverse_files/data/countryids.dta"},
-	'EventData' : {
-		'Dropbox' : "https://www.dropbox.com/s/b1aahhlke2gd1n6/eventdata.dta?dl=1",
-		'Local' : "dataverse_files/data/eventdata.dta"},
-	'CompleteMain' : {
-		'Dropbox' : "https://www.dropbox.com/s/srgz7t7k5t3omws/" \
-					"complete_main_new.dta?dl=1",
-		'Local' : "dataverse_files/data/complete_main_new.dta"},
-	'CompleteMain_OG' : {
-		'Dropbox' : "https://www.dropbox.com/s/qrud7n5ak4pcawk/" \
-					"complete_main_new_original.dta?dl=1",
-		'Local' : "dataverse_files/data/complete_main_new_original.dta"},
-	'ArticleCount' : {
-		'Dropbox' : "https://www.dropbox.com/s/vbz5dh78myqaa32/article_count.csv?dl=1",
-		'Local' : "dataverse_files/data/article_count.csv"},
-	'Theta_1995' : {
-		'Dropbox' : "https://www.dropbox.com/s/xqqb03az8dh10xo/" + theta_db.format(1995),
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed1995.dta"},
-	'Theta_1996' : {
-		'Dropbox' : "https://www.dropbox.com/s/kn0n9kuc9342wyi/" \
-					"thetas15_alpha3_beta001_all_both_collapsed1996.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed1996.dta"},
-	'Theta_1997' : {
-		'Dropbox' : "https://www.dropbox.com/s/el9ltiga8fnyhnf/" \
-					"thetas15_alpha3_beta001_all_both_collapsed1997.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed1997.dta"},
-	'Theta_1998' : {
-		'Dropbox' : "https://www.dropbox.com/s/kt9zo86nsgug18c/thetas15_alpha3_beta001_all_both_collapsed1998.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed1998.dta"},
-	'Theta_1999' : {
-		'Dropbox' : "https://www.dropbox.com/s/3e90uysagsh5j6y/thetas15_alpha3_beta001_all_both_collapsed1999.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed1999.dta"},
-	'Theta_2000' : {
-		'Dropbox' : "https://www.dropbox.com/s/yird2kmqyfx4qos/thetas15_alpha3_beta001_all_both_collapsed2000.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2000.dta"},
-	'Theta_2001' : {
-		'Dropbox' : "https://www.dropbox.com/s/ogbvafkck6uci1f/thetas15_alpha3_beta001_all_both_collapsed2001.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2001.dta"},
-	'Theta_2002' : {
-		'Dropbox' : "https://www.dropbox.com/s/dxybjz2nmc2wr1g/thetas15_alpha3_beta001_all_both_collapsed2002.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2002.dta"},
-	'Theta_2003' : {
-		'Dropbox' : "https://www.dropbox.com/s/47xseavooz97h3i/thetas15_alpha3_beta001_all_both_collapsed2003.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2003.dta"},
-	'Theta_2004' : {
-		'Dropbox' : "https://www.dropbox.com/s/uymak66cgwh3cqz/thetas15_alpha3_beta001_all_both_collapsed2004.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2004.dta"},
-	'Theta_2005' : {
-		'Dropbox' : "https://www.dropbox.com/s/pkcpx7n5kiiwmab/thetas15_alpha3_beta001_all_both_collapsed2005.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2005.dta"},
-	'Theta_2006' : {
-		'Dropbox' : "https://www.dropbox.com/s/20w1xwm9g3xoqxv/thetas15_alpha3_beta001_all_both_collapsed2006.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2006.dta"},
-	'Theta_2007' : {
-		'Dropbox' : "https://www.dropbox.com/s/xnseiqxoahbfmns/thetas15_alpha3_beta001_all_both_collapsed2007.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2007.dta"},
-	'Theta_2008' : {
-		'Dropbox' : "https://www.dropbox.com/s/bezx6p9wu0t8bxo/thetas15_alpha3_beta001_all_both_collapsed2008.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2008.dta"},
-	'Theta_2009' : {
-		'Dropbox' : "https://www.dropbox.com/s/cmfei42pxlmt3ca/thetas15_alpha3_beta001_all_both_collapsed2009.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2009.dta"},
-	'Theta_2010' : {
-		'Dropbox' : "https://www.dropbox.com/s/na35rztvy187dqi/thetas15_alpha3_beta001_all_both_collapsed2010.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2010.dta"},
-	'Theta_2011' : {
-		'Dropbox' : "https://www.dropbox.com/s/r7x0478sjos6six/thetas15_alpha3_beta001_all_both_collapsed2011.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2011.dta"},
-	'Theta_2012' : {
-		'Dropbox' : "https://www.dropbox.com/s/5y5on73oxb4fgpf/thetas15_alpha3_beta001_all_both_collapsed2012.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2012.dta"},
-	'Theta_2013' : {
-		'Dropbox' : "https://www.dropbox.com/s/of7mo0usbkqj82w/thetas15_alpha3_beta001_all_both_collapsed2013.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2013.dta"},
-	'Theta_2014' : {
-		'Dropbox' : "https://www.dropbox.com/s/vfe2xplgd2c9jw3/thetas15_alpha3_beta001_all_both_collapsed2014.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2014.dta"},
-	'Theta_2015' : {
-		'Dropbox' : "https://www.dropbox.com/s/fqdq5ax5sixy8om/thetas15_alpha3_beta001_all_both_collapsed2015.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both_collapsed2015.dta"},
-	'Theta_Full_1995' : {
-		'Dropbox' : "https://www.dropbox.com/s/z59vqlbrprczvnh/thetas15_alpha3_beta001_all_both1995.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both1995.dta"},
-	'Theta_Full_1996' : {
-		'Dropbox' : "https://www.dropbox.com/s/zlhr25gr9tlcycg/thetas15_alpha3_beta001_all_both1996.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both1996.dta"},
-	'Theta_Full_1997' : {
-		'Dropbox' : "https://www.dropbox.com/s/nz8fqk6hh61f3v2/thetas15_alpha3_beta001_all_both1997.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both1997.dta"},
-	'Theta_Full_1998' : {
-		'Dropbox' : "https://www.dropbox.com/s/ej30ikb0b3sh88e/thetas15_alpha3_beta001_all_both1998.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both1998.dta"},
-	'Theta_Full_1999' : {
-		'Dropbox' : "https://www.dropbox.com/s/qqo39u38dqcqsve/thetas15_alpha3_beta001_all_both1999.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both1999.dta"},
-	'Theta_Full_2000' : {
-		'Dropbox' : "https://www.dropbox.com/s/5g1v084txwt17yb/thetas15_alpha3_beta001_all_both2000.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2000.dta"},
-	'Theta_Full_2001' : {
-		'Dropbox' : "https://www.dropbox.com/s/wyh83n76aizguxr/thetas15_alpha3_beta001_all_both2001.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2001.dta"},
-	'Theta_Full_2002' : {
-		'Dropbox' : "https://www.dropbox.com/s/11oq0swh40sk93q/thetas15_alpha3_beta001_all_both2002.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2002.dta"},
-	'Theta_Full_2003' : {
-		'Dropbox' : "https://www.dropbox.com/s/v6x25dai1vbb481/thetas15_alpha3_beta001_all_both2003.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2003.dta"},
-	'Theta_Full_2004' : {
-		'Dropbox' : "https://www.dropbox.com/s/mp0470zj7gag5de/thetas15_alpha3_beta001_all_both2004.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2004.dta"},
-	'Theta_Full_2005' : {
-		'Dropbox' : "https://www.dropbox.com/s/ppcngl2qd3c53qq/thetas15_alpha3_beta001_all_both2005.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2005.dta"},
-	'Theta_Full_2006' : {
-		'Dropbox' : "https://www.dropbox.com/s/q3n2p8j4y0iocka/thetas15_alpha3_beta001_all_both2006.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2006.dta"},
-	'Theta_Full_2007' : {
-		'Dropbox' : "https://www.dropbox.com/s/u1z5j6d6v69dakh/thetas15_alpha3_beta001_all_both2007.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2007.dta"},
-	'Theta_Full_2008' : {
-		'Dropbox' : "https://www.dropbox.com/s/zyk9x1ti0tc7ry5/thetas15_alpha3_beta001_all_both2008.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2008.dta"},
-	'Theta_Full_2009' : {
-		'Dropbox' : "https://www.dropbox.com/s/z4rqncmntabs8iy/thetas15_alpha3_beta001_all_both2009.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2009.dta"},
-	'Theta_Full_2010' : {
-		'Dropbox' : "https://www.dropbox.com/s/9yja3dqqw3rquis/thetas15_alpha3_beta001_all_both2010.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2010.dta"},
-	'Theta_Full_2011' : {
-		'Dropbox' : "https://www.dropbox.com/s/4wnvqufctpvl1ms/thetas15_alpha3_beta001_all_both2011.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2011.dta"},
-	'Theta_Full_2012' : {
-		'Dropbox' : "https://www.dropbox.com/s/p5bfd51fbwya7d4/thetas15_alpha3_beta001_all_both2012.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2012.dta"},
-	'Theta_Full_2013' : {
-		'Dropbox' : "https://www.dropbox.com/s/j3ik866cvobs4rh/thetas15_alpha3_beta001_all_both2013.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2013.dta"},
-	'Theta_Full_2014' : {
-		'Dropbox' : "https://www.dropbox.com/s/fr5mo5raw1a6s5a/thetas15_alpha3_beta001_all_both2014.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2014.dta"},
-	'Theta_Full_2015' : {
-		'Dropbox' : "https://www.dropbox.com/s/3yit1p2sr3i7m0q/thetas15_alpha3_beta001_all_both2015.dta?dl=1",
-		'Local' : "dataverse_files/data/thetas15_alpha3_beta001_all_both2015.dta"}
-}
+	#Split the dictionary key into a list
+	KeyList = KeyName.split("_")
 
-#Create a function to read in the files based on paths within dictionary
-#All the function needs is the alias of the filename specified in the dict
-def FileRead(filename):
-
-	if local == "Local":
-		filename = currDir + "/" + files[filename][local]
+	#Condition to put together theta file name if needed
+	if KeyList[0] == "Theta":
+		FileName = "thetas15_alpha3_beta001_all_both"
+		if KeyList[1] == "Full":
+			FileName += KeyList[2] + ".dta"
+		else:
+			FileName += "_collapsed" + KeyList[1] + ".dta"
 	else:
-		filename = files[filename][local]
+		FileName = FileDict[KeyName][1]
 
-	if '.dta' in filename:
-		return(pd.read_stata(filename))
+	#Condition for whether imported locally or from dropbox
+	if local:
+		path = currDir + "/dataverse_files/data/" + FileName
 	else:
-		return(pd.read_csv(filename))
+		code = FileDict[KeyName][0] #Get dropbox code
+		path = "https://www.dropbox.com/s/" + code + "/" + FileName + "?dl=1"
+
+	#DTA files are STATA files and need a different import function
+	if '.dta' in path:
+		return(pd.read_stata(path))
+	else:
+		return(pd.read_csv(path))
 
 #Create a dictionary with labels for each column
 labs = {'year' : 'Article Year', 'theta_year' : 'Topic Year', 
@@ -362,7 +169,6 @@ print("=======================================================================")
 ################################################################################
 #########################>>>>>>>END SECTION 1<<<<<<<<<##########################
 ################################################################################
-
 
 ################################################################################
 ###########################>>>>>>>SECTION 2<<<<<<<<<############################
@@ -386,34 +192,39 @@ theta_years = list(range(1995, 2015))
 # specify the controls you want to use
 own = ['region_o', 'subregion_o', 'discrimshare']
 
+#Include the desired interaction variables to be include in master dataframe
+interactions = ['autoc']
+own.extend(interactions)
+
 # in the paper they specify different sets of controls
-control_sets = {
-	'chadefaux': ['cha_count', 'total_count', 'total_count_count', 'polity2', 'sincelast', 'sincelast_sq', 'sincelast_cu'],
-	'chadefauxshort': ['cha_count', 'total_count', 'total_count_count'],
-	'ajps': ['democ_3', 'democ_4', 'democ_5', 'democ_6', 'lnchildmortality', 'armedconf4', 'discrimshare'],
-	'lasso': ['democ_3', 'democ_4', 'democ_6', 'childmortality', 'discrimshare', 'excludedshare', 'dissgov', 'ethnicgov'],
-	'ward': ['high', 'low', 'autoc', 'democ', 'excludedshare', 'excludedshare_sq', 'lnchildmortality',  'armedconf4', 'discrimshare'],
-	'events': ['govopp', 'dissgov', 'domgov', 'ethnicgov'],
-	'pillars': ['nat_dum', 'nat_dum_goodinst',  'scmem', 'scmem_goodinst',  'scmem_cold', 'scmem_cold_goodinst']
-}
+# control_sets = {
+# 	'chadefaux': ['cha_count', 'total_count', 'total_count_count', 'polity2', 
+# 		'sincelast', 'sincelast_sq', 'sincelast_cu'],
+# 	'chadefauxshort': ['cha_count', 'total_count', 'total_count_count'],
+# 	'ajps': ['democ_3', 'democ_4', 'democ_5', 'democ_6', 'lnchildmortality', 'armedconf4', 'discrimshare'],
+# 	'lasso': ['democ_3', 'democ_4', 'democ_6', 'childmortality', 'discrimshare', 'excludedshare', 'dissgov', 'ethnicgov'],
+# 	'ward': ['high', 'low', 'autoc', 'democ', 'excludedshare', 'excludedshare_sq', 'lnchildmortality',  'armedconf4', 'discrimshare'],
+# 	'events': ['govopp', 'dissgov', 'domgov', 'ethnicgov'],
+# 	'pillars': ['nat_dum', 'nat_dum_goodinst',  'scmem', 'scmem_goodinst',  'scmem_cold', 'scmem_cold_goodinst']
+# }
 
 # get user input which set of controls to use
-print("""Available sets of controls:
-- chadefaux: cha_count total_count total_count_count polity2 sincelast sincelast_sq sincelast_cu
-- chadefauxshort: cha_count total_count total_count_count
-- ajps: democ_3 democ_4 democ_5 democ_6 lnchildmortality  armedconf4 discrimshare
-- lasso: democ_3 democ_4 democ_6 childmortality discrimshare excludedshare dissgov ethnicgov
-- ward: high low autoc democ excludedshare excludedshare_sq lnchildmortality  armedconf4 discrimshare
-- wardzwei: highdum lowdum autoc democ excludedshare excludedshare_sq lnchildmortality  armedconf4 discrimshare
-- events: govopp dissgov domgov ethnicgov
-- pillars: nat_dum nat_dum_goodinst  scmem scmem_goodinst  scmem_cold scmem_cold_goodinst
-""")
-controls_choice = input("Please choose 'own' if you specified your own controls or choose instead one of the sets above: ").lower()
+# print("""Available sets of controls:
+# - chadefaux: cha_count total_count total_count_count polity2 sincelast sincelast_sq sincelast_cu
+# - chadefauxshort: cha_count total_count total_count_count
+# - ajps: democ_3 democ_4 democ_5 democ_6 lnchildmortality  armedconf4 discrimshare
+# - lasso: democ_3 democ_4 democ_6 childmortality discrimshare excludedshare dissgov ethnicgov
+# - ward: high low autoc democ excludedshare excludedshare_sq lnchildmortality  armedconf4 discrimshare
+# - wardzwei: highdum lowdum autoc democ excludedshare excludedshare_sq lnchildmortality  armedconf4 discrimshare
+# - events: govopp dissgov domgov ethnicgov
+# - pillars: nat_dum nat_dum_goodinst  scmem scmem_goodinst  scmem_cold scmem_cold_goodinst
+# """)
+# controls_choice = input("Please choose 'own' if you specified your own controls or choose instead one of the sets above: ").lower()
 
-if controls_choice != 'own':
-	controls = control_sets[controls_choice]
-else:
-	controls = own
+# if controls_choice != 'own':
+	# controls = control_sets[controls_choice]
+# else:
+	# controls = own
 
 # list to store the ready to go regression data for each year
 master_data = []
@@ -422,7 +233,7 @@ master_data = []
 merge_cols = ['year', 'countryid']
 #Define the variables needed to construct the dependent variables
 covars = ['bdbest25', 'bdbest1000', 'pop']
-covars.extend(controls)
+covars.extend(own)
 
 for year in theta_years:
 	# get thetas in the correct shape, i.e. keep only ste + year and countryid
@@ -452,6 +263,7 @@ master2 = master.groupby('countryid', as_index = False)['pop'].mean()
 master2.rename({'pop' : 'avpop'}, axis = 1, inplace = True)
 master = master.merge(master2, on = 'countryid', how = 'left')
 master = master[master['year'] > 1974]
+master = master.reset_index().drop('index', axis = 1)
 
 print("=======================================================================")
 print("Finished Running Code in Section 2")
@@ -504,16 +316,39 @@ def xtsum(data, labs, indiv, time):
 		df.loc[(labs[col], "overall"), 'Observations'] = data[col].count()
 
 		df.loc[(labs[col], 'between'), 'Mean'] = np.nan
-		df.loc[(labs[col], 'between'), 'Min'] = np.min(data.groupby(time, as_index = False)[col].mean()[col])
-		df.loc[(labs[col], 'between'), 'Max'] = np.max(data.groupby(time, as_index = False)[col].mean()[col])
-		df.loc[(labs[col], "between"), 'Observations'] = len(data[~np.isnan(data[col])][time].unique())
-		df.loc[(labs[col], 'between'), 'Std. Dev.'] = np.sqrt(np.sum(np.power(data.groupby(time)[col].mean() - np.mean(data[col]), 2)) / (df.loc[(labs[col], 'between'), 'Observations'] - 1))
+		df.loc[(labs[col], 'between'), 'Min'] = \
+			np.min(data.groupby(time, as_index = False)[col].mean()[col])
+
+		df.loc[(labs[col], 'between'), 'Max'] = \
+			np.max(data.groupby(time, as_index = False)[col].mean()[col])
+
+		df.loc[(labs[col], "between"), 'Observations'] = \
+			len(data[~np.isnan(data[col])][time].unique())
+
+		df.loc[(labs[col], 'between'), 'Std. Dev.'] = \
+			np.sqrt(np.sum(np.power(data.groupby(time)[col].mean() - \
+			np.mean(data[col]), 2)) / (df.loc[(labs[col], 'between'), \
+			'Observations'] - 1))
 
 		df.loc[(labs[col], 'within'), 'Mean'] = np.nan
-		df.loc[(labs[col], 'within'), 'Min'] = np.min(data[col] + np.mean(data[col]) - data.merge(data.groupby(time, as_index = False)[col].mean().rename({col : 'mean'}, axis = 1), on = [time], how = 'left')['mean'])
-		df.loc[(labs[col], 'within'), 'Max'] = np.max(data[col] + np.mean(data[col]) - data.merge(data.groupby(time, as_index = False)[col].mean().rename({col : 'mean'}, axis = 1), on = [time], how = 'left')['mean'])
-		df.loc[(labs[col], "within"), 'Observations'] = len(data[~np.isnan(data[col])][indiv].unique())
-		df.loc[(labs[col], 'within'), 'Std. Dev.'] =  np.sqrt(np.sum(np.power(data[col] - data.merge(data.groupby(time, as_index = False)[col].mean().rename({col : 'mean'}, axis = 1), on = time, how = 'left')['mean'], 2)) / (data[col].count() - 1))
+		df.loc[(labs[col], 'within'), 'Min'] = \
+			np.min(data[col] + np.mean(data[col]) - data.merge(\
+			data.groupby(time, as_index = False)[col].mean().rename(\
+				{col : 'mean'}, axis = 1), on = [time], how = 'left')['mean'])
+
+		df.loc[(labs[col], 'within'), 'Max'] = \
+			np.max(data[col] + np.mean(data[col]) - data.merge(\
+				data.groupby(time, as_index = False)[col].mean().rename(\
+				{col : 'mean'}, axis = 1), on = [time], how = 'left')['mean'])
+
+		df.loc[(labs[col], "within"), 'Observations'] = \
+			len(data[~np.isnan(data[col])][indiv].unique())
+
+		df.loc[(labs[col], 'within'), 'Std. Dev.'] = \
+			np.sqrt(np.sum(np.power(data[col] - data.merge(\
+			data.groupby(time, as_index = False)[col].mean().rename(\
+			{col : 'mean'}, axis = 1), on = time, how = 'left')['mean'], 2)) \
+			/ (data[col].count() - 1))
 
 		df.fillna("", inplace = True)
 
@@ -703,119 +538,248 @@ print("=======================================================================")
 print("Beginning Running Code in Section 4")
 print("=======================================================================")
 
-def data_compare(data, test, fit_year, compare_vars, dep_var, onset = True):
+# def data_compare(data, test, fit_year, compare_vars, dep_var, onset = True):
 
-	data = data.copy()
-	test = test.copy()
-	thetas = [col for col in data.columns if ('ste_theta' in col)&(col != 'ste_theta0')]
+# 	data = data.copy()
+# 	test = test.copy()
+# 	thetas = [col for col in data.columns if \
+# 		('ste_theta' in col)&(col != 'ste_theta0')]
 	
-	compare_vars = thetas + compare_vars
+# 	compare_vars = thetas + compare_vars
 
-	test = test[(test['year'] > 1974)&(test['year'] <= fit_year)&
-		(test['avpop'] >= 1000)&(test['tokens'] > 0)&(~test['avpop'].isnull())&
-		(~test['tokens'].isnull())&(test['samp'] == 1)]
+# 	test = test[(test['year'] > 1974)&(test['year'] <= fit_year)&
+# 		(test['avpop'] >= 1000)&(test['tokens'] > 0)&(~test['avpop'].isnull())&
+# 		(~test['tokens'].isnull())&(test['samp'] == 1)]
 
-	if onset:
-		test = test[test[dep_var] != 1]
-	else:
-		test = test[~test[dep_var].isnull()]
+# 	if onset:
+# 		test = test[test[dep_var] != 1]
+# 	else:
+# 		test = test[~test[dep_var].isnull()]
 
-	test = test[['countryid', 'year'] + compare_vars]
-	test = test.reset_index()
-	data = data.reset_index()
+# 	test = test[['countryid', 'year'] + compare_vars]
+# 	test = test.reset_index()
+# 	data = data.reset_index()
 
-	print('The number of rows of the data from STATA: ' + str(test.shape[0]))
-	print('The number of rows of the data from Python: ' + str(data.shape[0]))
+# 	print('The number of rows of the data from STATA: ' + str(test.shape[0]))
+# 	print('The number of rows of the data from Python: ' + str(data.shape[0]))
 
-	for var in compare_vars:
+# 	for var in compare_vars:
 
-		equality = all(data[var].values == test[var].values)
-		print('For the variable ' + str(var) + 
-			', the columns in STATA and Python are equal: ' + str(equality))
-		if not equality:
-			print(data[data[var] != test[var]][['countryid', 'year', var]].head())
-			print(test[data[var] != test[var]][['countryid', 'year', var]].head())
+# 		equality = all(data[var].values == test[var].values)
+# 		print('For the variable ' + str(var) + 
+# 			', the columns in STATA and Python are equal: ' + str(equality))
+# 		if not equality:
+# 			print(data[data[var] != test[var]][['countryid', 'year', var]].head())
+# 			print(test[data[var] != test[var]][['countryid', 'year', var]].head())
 
-def run_model(data, fit_year, dep_var, onset = True, all_indiv = True):
+#Define a function to run a model for a single theta year with inputs
+
+def run_model(data, params):
+
+	############################################################################
+	#Input Notes
+	############################################################################	
+	#data should be master file
+	#fit year is year t, before prediction year
+	fit_year = params['fit_year']
+
+	dep_var = params['dep_var'] #dep var should be bdbest25 or bdbest1000
+	
+	#onset is when there is no conflict in t but there is in t + 1
+	#incidence is when there is conflict in t and conflict in t + 1
+	onset = params['onset']
+
+	#If not all_indiv, then removes counties with no conflict in the sample 
+	all_indiv = params['all_indiv']
+
+	FE = params['FE'] #Boolean for Pooled OLS or Fixed Effects Panel
+
+	#Get the list of variables to interact with the theta shares
+	#This input diverges from the authors technique, so results will differ
+	interactions = params['interactions']
+
+	#The order of null filling and removal is done according to the authors
+	#		code, changing the order changes the result
+	############################################################################
+	#Input Notes
+	############################################################################
 
 	#Get list of countries that are excluded for each run
 	#Make a regression summary text file with each run
 
-	data = data.copy(deep = True)
+	data = data.copy(deep = True) #Make a copy so dataframe not overwritten
 	data = data[data['theta_year'] == (fit_year + 1)]
-	thetas = [col for col in data.columns if ('ste_theta' in col)&(col != 'ste_theta0')]
 
+	#Define the column names of thetas to be used as regressors
+	thetas = ["ste_theta" + str(i) for i in range(1, 15)]
+
+	#One before here means you are in t (one before the next period)
 	data['one_before'] = data.groupby('countryid')[dep_var].shift(-1)
-	if onset:
-		data['one_before'] = np.where((data['one_before'] == 1)&(data[dep_var] == 0), 1, 0)
-	else:
-		data['one_before'] = np.where((data['one_before'] == 1)&(data[dep_var] == 1), 1, 0)
 
+	if onset: #Condition for whether this is onset or incidence, explained above
+		data['one_before'] = np.where(\
+			(data['one_before'] == 1)&(data[dep_var] == 0), 1, 0)
+	else:
+		data['one_before'] = np.where(\
+			(data['one_before'] == 1)&(data[dep_var] == 1), 1, 0)
+
+	#Condition for removing countries with population less than 1000 and nulls
 	data = data[(data['avpop'] >= 1000)&(~data['avpop'].isnull())]
 
+	#Forward fill by group all the null values in the regressors
 	data[thetas] = data.groupby('countryid')[thetas].ffill()
 
-	data = data.drop([col for col in data.columns if "_Lag" in col], axis = 1)
-
+	#Forward fill by group all the null token values
 	data['tokens'] = data.groupby('countryid')['tokens'].ffill()
 
-	if onset:
-		data = data[data[dep_var] != 1]
+	if onset: #Condition for which instances of the dependent variable to remove
+		data = data[data[dep_var] != 1] #Don't want repetition of conflict
 	else:
 		data = data[~data[dep_var].isnull()]
 
+	#Only take data where tokens are non-zero and non-null
 	data = data[(data['tokens'] > 0)&(~data['tokens'].isnull())]
 
+	#If individuals with no conflict are to be removed
 	if not all_indiv:
 		total = data.groupby('countryid', as_index = False)[dep_var].sum()
 		total = total.rename({dep_var : 'total_conflict'}, axis = 1)
 		data = data.merge(total, how = 'left', on = 'countryid')
 		data = data[data['total_conflict'] > 0]
 
+	#Remove all years after fit_year, authors define a sample variable in code
 	data = data[data['year'] <= fit_year]
 	data.set_index(['countryid', 'year'], inplace = True)
 
-	exog = data[thetas]
+	regressors = thetas
+
+	#If the interaction list is not empty, add the interactions
+	if interactions is not None:
+		for interact in interactions:
+			cols = [x + "X" + interact for x in thetas]
+			data[cols] = data[thetas].multiply(data[interact], axis = 'index')
+			regressors.extend(cols)
+
+	data = data.reset_index()
+
+	for year in data['year'].unique()[1:]:
+		data['Dummy_' + str(year)] = np.where(data['year'] == year, 1, 0)
+
+	regressors.extend([x for x in data.columns if "Dummy_" in x])
+
+	#Add all of the independent regressors to the exog matrix
+	exog = data[regressors]
 	exog = sm.add_constant(exog)
 
-	model = PanelOLS(data['one_before'], exog,
-		entity_effects = True)
-	return(model, data)
+	#Run the model as specified with the FE boolean in the inputs
+	model = mt.reg(data, 'one_before', regressors,
+		fe_name = 'countryid', cluster = 'countryid',
+		vce_type = "cluster", addcons = True)
 
-def pred_model(data, fit_year, model, include_fixef = False):
+	# model = PanelOLS(data['one_before'], exog,
+	# 	entity_effects = FE, time_effects = True)
+	return(model)
 
-	data = data.copy()
-	data = data[(data['year'] == (fit_year + 1))&(data['theta_year'] == (fit_year + 1))]
-	data.set_index(['countryid', 'year'], inplace = True)
-	thetas = [col for col in data.columns if ('ste_theta' in col)&(col != 'ste_theta0')]
-	exog = data[thetas]
+def pred_model(data, model, params):
+
+	############################################################################
+	#Input Notes
+	############################################################################	
+	#data should be master file
+	#model input should be an object returned by run_model function
+
+	#fit year is year t, before prediction year
+	fit_year = params['fit_year']
+
+	include_fixef = params['FE'] #Boolean for including fixed effects alpha
+
+	#Get the list of variables to interact with the theta shares
+	#This input diverges from the authors technique, so results will differ
+	interactions = params['interactions']
+	############################################################################
+	#Input Notes
+	############################################################################
+
+	#Create a copy to not overwrite the dataframe
+	data = data.copy(deep = True)
+
+	#We are making a prediction for t + 1, as in authors code
+	data = data[(data['year'] == (fit_year + 1))&\
+		(data['theta_year'] == (fit_year + 1))]
+
+	#Get the index of the dataframe, individual by time
+	data = data.set_index(['countryid', 'year'])
+
+	#Get the columns for the theta regressors
+	thetas = ["ste_theta" + str(i) for i in range(1, 15)]
+
+	regressors = thetas
+
+	#If the interaction list is not empty, add the interactions
+	if interactions is not None:
+		for interact in interactions:
+			cols = [x + "X" + interact for x in thetas]
+			data[cols] = data[thetas].multiply(data[interact], axis = 'index')
+			regressors.extend(cols)
+
+	#Add all of the independent regressors to the exog matrix
+	exog = data[regressors]
 	exog = sm.add_constant(exog)
+
+	#Use the model to predict the t + 1 values for the chosen conflict
 	preds = model.fit().predict(exog)
-	preds.reset_index(inplace = True)
-	preds.rename({'predictions' : 'within_pred'}, axis = 1, inplace = True)
+	preds.reset_index(inplace = True) #Reset the index
 
+	#Condition for whether to break the predictions down by fixed and within
+	#The authors do this, getting the alpha and within portion of prediction
 	if include_fixef:
+		#Rename the prediction, this in the linear prediction component
+		preds = preds.rename({'predictions' : 'within_pred'}, axis = 1)
+
+		#Get the estimated fixed effects (alpha) per country
 		fixef = model.fit().estimated_effects
-		fixef = fixef.reset_index()
+
+		fixef = fixef.reset_index() #Reset the index
+
+		#Groupby country to get a single value from the estimated effects
 		fixef = fixef.groupby('countryid', 
 			as_index = False)['estimated_effects'].mean()
-		fixef.rename({'estimated_effects' : "FE"}, inplace = True, axis = 1)
+
+		#Rename the estimated effects as the fixed effects (alpha)
+		fixef = fixef.rename({'estimated_effects' : "FE"}, axis = 1)
+		#Remerge the fixed effects back onto the prediction frame
 		preds = preds.merge(fixef, how = 'left', on = 'countryid')
-		preds['overall_pred'] = preds['within_pred'] + np.where(preds['FE'].isnull(), 0, preds['FE'])
-		preds.drop('FE', axis = 1, inplace = True)
+
+		#The overall prediction should be the within and fixed predictions
+		preds['predictions'] = preds['within_pred'] + \
+			np.where(preds['FE'].isnull(), 0, preds['FE'])
+
+		# preds = preds.drop('FE', axis = 1)
 
 	return(preds)
 
-compare_vars = ['tokens', 'bdbest25', 'one_before', 'avpop']
+# compare_vars = ['tokens', 'bdbest25', 'one_before', 'avpop']
 
 # test = pd.read_stata(os.getcwd() + '/dataverse_files/data/test.dta')
 
-model, df = run_model(master, 1995, 'bdbest25', onset = True, all_indiv = True)
+model_params = {
+	"fit_year" : 1995, #Year for fitting the model
+	"dep_var" : "bdbest25", #Civil War (1000) or Armed Conflict (25)
+	"onset" : True, #Onset of Incidence of Conflict
+	"all_indiv" : True, #Include all countries or not
+	"FE" : False, #Pooled Model or Fixed Effects
+	'interactions' : None #Set of interaction vars (can be None)
+}
+
+model = run_model(master, model_params)
+print(model)
 print(model.fit())
+
+string = outreg(model, ['ste_theta1', 'const'], digits = 3)
 
 # data_compare(df, test, 1995, compare_vars, 'bdbest25', onset = True)
 
-preds = pred_model(master, 1995, model, include_fixef = True)
+preds = pred_model(master, model, model_params)
 print(preds)
 
 print("=======================================================================")
