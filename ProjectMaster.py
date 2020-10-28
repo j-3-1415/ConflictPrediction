@@ -65,9 +65,10 @@ from linearmodels.panel import PooledOLS, BetweenOLS, RandomEffects
 from linearmodels.panel import PanelOLS, compare
 from itertools import product
 import statsmodels.api as sm
-from econtools import outreg
-import econtools.metrics as mt
-from stargazer.stargazer import Stargazer
+from sklearn.metrics import roc_curve, roc_auc_score
+import plotly.express as px
+from linearmodels.iv.results import compare
+from collections import OrderedDict
 
 global currDir #Define global variable of current directory
 global local #Define global variable of input for file source
@@ -371,34 +372,54 @@ def xtsum(data, labs, indiv, time):
 #####################>>>>>>>>Visual Analysis<<<<<<<#############################
 ################################################################################
 
-# 1. limit countries to the ones that experienced both peace and conflict (check sd?)
+# build data frame that allows for subsequent groupings
+sum_cols = ['year', 'countryid', 'bdbest25', 'bdbest1000']
+sum_cols.extend([col for col in master.columns if '_theta' in col])
+sum_cols.extend(own)
+
+master_plot = master[master['theta_year'] == 2013][sum_cols]
+master_plot.reset_index(inplace=True)
+master_plot.drop('index', axis=1, inplace=True)
+
+topic_names = {'ste_theta0': 'Industry', 'ste_theta1': 'CivicLife1', 'ste_theta2': 'Asia',
+			   'ste_theta3': 'Sports', 'ste_theta4': 'Justice', 'ste_theta5': 'Tourism',
+			   'ste_theta6': 'Politics', 'ste_theta7': 'Conflict1', 'ste_theta8': 'Business',
+			   'ste_theta9': 'Economics', 'ste_theta10': 'InterRelations1', 'ste_theta11': 'InterRelations2',
+			   'ste_theta12': 'Conflict3', 'ste_theta13': 'CivicLife2', 'ste_theta14': 'Conflict2'}
+
+master_plot.rename(columns=topic_names, inplace=True)
+
+country_names = FileRead('CountryID')
+
+master_plot = master_plot.merge(country_names, on='countryid', how='left')
+
+
+# limit countries to the ones that experienced both peace and conflict (check sd?)
 conflict_std = master2013.groupby('countryid')[['bdbest25']].std()
 conflict_countries = list(conflict_std[conflict_std['bdbest25'] != 0].index.values)
 
-master2013_conflict = master2013[master2013.countryid.isin(conflict_countries)]
+master_plot_conflict = master_plot[master_plot.countryid.isin(conflict_countries)]
 
-# 2. match country codes to make assessment more intuitive
-country_names = FileRead('CountryID')
-master2013_conflict = master2013_conflict.merge(country_names, on='countryid',
-                                                how='left')  # .drop(['bdbest25', 'bdbest1000'], axis=1)
-
-master2013_conflict_long = pd.melt(master2013_conflict, id_vars=['country', 'year'],
-                                   value_vars=[col for col in master2013_conflict if col.startswith('ste')])
-master2013_conflict_long = master2013_conflict_long.merge(
-    master2013_conflict[['country', 'year', 'bdbest25', 'bdbest1000']]
+# wide to long
+master_plot_conflict_long = pd.melt(master_plot_conflict, id_vars=['country', 'year'], value_vars=list(topic_names.values()))
+master_plot_conflict_long = master_plot_conflict_long.merge(
+    master_plot_conflict[['country', 'year', 'bdbest25', 'bdbest1000', 'region_o', 'subregion_o', 'discrimshare']]
     , on=['country', 'year'], how='left')
 
-# 3. joint theta development not distinguishing between countries
-sns.lineplot(data=master2013_conflict_long, x="year", y="value", hue="variable")
+# clean data (no values except for country, investigate this further!)
+master_plot_conflict_long = master_plot_conflict_long[master_plot_conflict_long['region_o'] != '']
+
+
+# plot joint theta development not distinguishing between countries
+sns.lineplot(data=master_plot_conflict_long, x="year", y="value", hue="variable")
 plt.savefig(currDir + str('/Output/thetas_total.png'))
 plt.close()
 
-# 4. each country individually
+#  plot thetas for each country individually
 fig, axes = plt.subplots(nrows=15, ncols=6)
-# fig.subplots_adjust(hspace=0.7)
 
-for ax, country in zip(axes.flatten(), master2013_conflict_long['country'].unique()):
-    dat = master2013_conflict_long[master2013_conflict_long['country'] == country]
+for ax, country in zip(axes.flatten(), master_plot_conflict_long['country'].unique()):
+    dat = master_plot_conflict_long[master_plot_conflict_long['country'] == country]
     conflict_years = dat[dat['bdbest25'] == 1].year.unique()
     for year in conflict_years:
         ax.axvline(year, color='red')
@@ -415,27 +436,11 @@ fig.savefig(currDir + str('/Output/thetas_perCountry.png'), dpi=100)
 plt.close(fig)
 
 # replicate this exercise for regions
-# 1. rebuild master since we need region controls (can be extended)
-sum_cols = ['year', 'countryid', 'region_o']
-sum_cols.extend([col for col in master.columns if '_theta' in col])
 
-master_region = master[master['theta_year'] == 2013][sum_cols]
-master_region.reset_index(inplace=True)
-master_region.drop('index', axis=1, inplace=True)
-
-master_region_conflict = master_region[master_region.countryid.isin(conflict_countries)]
-master_region_conflict_long = pd.melt(master_region_conflict,
-                                      id_vars=['region_o', 'year'],
-                                      value_vars=[col for col in master_region_conflict if col.startswith('ste')])
-
-master_region_conflict_long = master_region_conflict_long[master_region_conflict_long['region_o'] != '']
-
-# 2. plot for each region
 fig, axes = plt.subplots(nrows=3, ncols=2)
-# fig.subplots_adjust(hspace=0.7)
 
-for ax, region in zip(axes.flatten(), master_region_conflict_long['region_o'].unique()):
-    dat = master_region_conflict_long[master_region_conflict_long['region_o'] == region]
+for ax, region in zip(axes.flatten(), master_plot_conflict_long['region_o'].unique()):
+    dat = master_plot_conflict_long[master_plot_conflict_long['region_o'] == region]
     sns.lineplot(data=dat, x="year", y="value", hue="variable", ax=ax)
     ax.set(title=str(region))
     ax.get_legend().remove()
@@ -449,27 +454,11 @@ fig.savefig(currDir + str('/Output/thetas_perRegion.png'), dpi=100)
 plt.close(fig)
 
 # replicate this exercise for subregions
-# 1. rebuild master since we need subregion controls (can be extended)
-sum_cols = ['year', 'countryid', 'subregion_o']
-sum_cols.extend([col for col in master.columns if '_theta' in col])
 
-master_subregion = master[master['theta_year'] == 2013][sum_cols]
-master_subregion.reset_index(inplace=True)
-master_subregion.drop('index', axis=1, inplace=True)
-
-master_subregion_conflict = master_subregion[master_subregion.countryid.isin(conflict_countries)]
-master_subregion_conflict_long = pd.melt(master_subregion_conflict,
-                                         id_vars=['subregion_o', 'year'],
-                                         value_vars=[col for col in master_subregion_conflict if col.startswith('ste')])
-
-master_subregion_conflict_long = master_subregion_conflict_long[master_subregion_conflict_long['subregion_o'] != '']
-
-# 2. plot for each region
 fig, axes = plt.subplots(nrows=6, ncols=3)
-# fig.subplots_adjust(hspace=0.7)
 
-for ax, subregion in zip(axes.flatten(), master_subregion_conflict_long['subregion_o'].unique()):
-    dat = master_subregion_conflict_long[master_subregion_conflict_long['subregion_o'] == subregion]
+for ax, subregion in zip(axes.flatten(), master_plot_conflict_long['subregion_o'].unique()):
+    dat = master_plot_conflict_long[master_plot_conflict_long['subregion_o'] == subregion]
     sns.lineplot(data=dat, x="year", y="value", hue="variable", ax=ax)
     ax.set(title=str(subregion))
     ax.get_legend().remove()
@@ -482,25 +471,13 @@ fig.suptitle('Distributions of thetas per subregion')
 fig.savefig(currDir + str('/Output/thetas_perSubregion.png'), dpi=100)
 plt.close(fig)
 
-# scatter of % discrimination vs theta
-sum_cols = ['year', 'countryid', 'discrimshare']
-sum_cols.extend([col for col in master.columns if '_theta' in col])
+# scatter of % discrimination vs theta, plot for each year
+# no values for 2014
 
-master_discrim = master[master['theta_year'] == 2013][sum_cols]
-master_discrim.reset_index(inplace=True)
-master_discrim.drop('index', axis=1, inplace=True)
-
-master_discrim_sub = master_discrim[
-    (master_discrim.countryid.isin(conflict_countries)) & master_discrim.discrimshare != 0]
-master_discrim_sub_l = pd.melt(master_discrim_sub,
-                               id_vars=['countryid', 'year', 'discrimshare'],
-                               value_vars=[col for col in master_discrim_sub if col.startswith('ste')])
-
-# plot for each year
 fig, axes = plt.subplots(nrows=8, ncols=5)
 
-for ax, year in zip(axes.flatten(), master_discrim_sub_l['year'].unique()):
-    dat = master_discrim_sub_l[master_discrim_sub_l['year'] == year]
+for ax, year in zip(axes.flatten(), master_plot_conflict_long[master_plot_conflict_long['year'] < 2014]['year'].unique()):
+    dat = master_plot_conflict_long[master_plot_conflict_long['year'] == year]
     sns.scatterplot(data=dat, x="discrimshare", y="value", hue="variable", ax=ax)
     ax.set(title=str(year))
     ax.get_legend().remove()
@@ -604,6 +581,8 @@ def run_model(data, params):
 	#This input diverges from the authors technique, so results will differ
 	interactions = params['interactions']
 
+	Pooled = params['Pooled'] #Whether to run Pooled or not
+
 	#The order of null filling and removal is done according to the authors
 	#		code, changing the order changes the result
 	############################################################################
@@ -653,6 +632,10 @@ def run_model(data, params):
 		data = data.merge(total, how = 'left', on = 'countryid')
 		data = data[data['total_conflict'] > 0]
 
+	# if Pooled:
+	# 	for year in data['year'].unique()[1:-2]:
+	# 		data['Dummy_' + str(year)] = np.where(data['year'] == year, 1, 0)
+
 	#Remove all years after fit_year, authors define a sample variable in code
 	data = data[data['year'] <= fit_year]
 	data.set_index(['countryid', 'year'], inplace = True)
@@ -666,12 +649,18 @@ def run_model(data, params):
 			data[cols] = data[thetas].multiply(data[interact], axis = 'index')
 			regressors.extend(cols)
 
+	# if Pooled:
+	# 	regressors.extend([x for x in data.columns if x.startswith("Dummy_")])
+
 	#Add all of the independent regressors to the exog matrix
 	exog = data[regressors]
 	exog = sm.add_constant(exog)
 
-	model = PanelOLS(data['one_before'], exog,
-		entity_effects = FE, time_effects = True)
+	if Pooled:
+		model = PooledOLS(data['one_before'], exog)
+	else:
+		model = PanelOLS(data['one_before'], exog,
+			entity_effects = FE, time_effects = True)
 
 	model = model.fit(cov_type = 'clustered', cluster_entity = True)
 
@@ -776,7 +765,7 @@ def out_latex(model, labs, model_params, file, type):
 		params = model.params.values #Get coefficient values
 		errors = model.std_errors.values #Get standard error values
 		pvals = model.pvalues.values #Get the pvalue values
-		lab_list = [labs[i] for i in fit.params.index] #List of Labels
+		lab_list = [labs[i] for i in model.params.index] #List of Labels
 
 		#Define the beginning of latex tabular to be put within table definition
 		string = "\\begin{center}\n\\begin{tabular}{lc}\n" + \
@@ -818,6 +807,8 @@ def out_latex(model, labs, model_params, file, type):
 			replace = "textbf{" + labs[key] + "}"
 			string = string.replace(pattern, replace)
 
+	return(string)
+
 	#After creating latex string, write to tex file
 	with open(file, 'w') as f:
 		f.write(string)
@@ -828,12 +819,13 @@ def out_latex(model, labs, model_params, file, type):
 # test = pd.read_stata(os.getcwd() + '/dataverse_files/data/test.dta')
 
 model_params = {
-	"fit_year" : 1995, #Year for fitting the model
+	"fit_year" : 2013, #Year for fitting the model
 	"dep_var" : "bdbest25", #Civil War (1000) or Armed Conflict (25)
 	"onset" : True, #Onset of Incidence of Conflict
 	"all_indiv" : True, #Include all countries or not
-	"FE" : True, #Pooled Model or Fixed Effects
-	'interactions' : None #Set of interaction vars (can be None)
+	"FE" : False, #Pooled Model or Fixed Effects
+	'interactions' : None, #Set of interaction vars (can be None)
+	'Pooled' : True
 }
 
 model = run_model(master, model_params)
@@ -844,7 +836,7 @@ print(model)
 preds = pred_model(master, model, model_params)
 print(preds)
 
-out_latex(model, labs, model_params, "FE_1995.tex", "python")
+string = out_latex(model, labs, model_params, "FE_1995.tex", "custom")
 
 print("=======================================================================")
 print("Finished Running Code in Section 4")
@@ -852,6 +844,71 @@ print("=======================================================================")
 
 ################################################################################
 #########################>>>>>>>END SECTION 4<<<<<<<<<##########################
+################################################################################
+
+################################################################################
+###########################>>>>>>>SECTION 5<<<<<<<<<############################
+#######################>>>>>>>>ROC Computation<<<<<<<###########################
+################################################################################\
+
+print("=======================================================================")
+print("Beginning Running Code in Section 5")
+print("=======================================================================")
+
+def compute_roc(master, model_params):
+
+	dep_var = model_params['dep_var']
+
+	true = master[(master['theta_year'] == master['year'])&
+		(master['year'] >= 1996)]\
+		[['countryid', 'year', model_params['dep_var']]]
+
+	pred_dfs = []
+
+	merge_cols = ['countryid', 'year', 'predictions']
+	if model_params['FE']:
+		merge_cols.append('within_pred')
+
+	for fit_year in range(1995, 2013):
+
+		model_params['fit_year'] = fit_year
+
+		model = run_model(master, model_params)
+
+		preds = pred_model(master, model, model_params)
+
+		pred_dfs.append(preds[merge_cols])
+
+	preds = pd.concat(pred_dfs)
+
+	true = true.merge(preds, how = 'left', on = ['countryid', 'year'])
+
+	true = true.dropna(axis = 0)
+
+	overall = roc_curve(true[dep_var], true['predictions'])
+	within = roc_curve(true[dep_var], true['within_pred'])
+
+	overall_auc = roc_auc_score(true[dep_var], true['predictions'])
+	within_auc = roc_auc_score(true[dep_var], true['within_pred'])
+	
+	fig = plt.figure()
+
+	fig.plot(overall[0], overall[1], 'b', color = 'black')
+	fig.plot(within[0], within[1], 'b', color = 'black', linestyle = 'dashed')
+
+	fig.text(2, 6, r'Overall AUC = ' + str(overall_auc), fontsize = 10)
+	fig.text(0, 6, r'Within AUC = ' + str(within_auc), fontsize = 10)
+
+	plt.show()
+
+	# return(true)
+
+print("=======================================================================")
+print("Finished Running Code in Section 4")
+print("=======================================================================")
+
+################################################################################
+#########################>>>>>>>END SECTION 5<<<<<<<<<##########################
 ################################################################################
 
 
