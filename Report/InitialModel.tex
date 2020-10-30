@@ -1,0 +1,18 @@
+\tikzstyle{box} = [rectangle, rounded corners, minimum width=1cm, minimum height=1cm,text centered, draw=black]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+\begin{tikzpicture}[node distance = 2cm]
+    \node (Yt+1) [box, fill = yellow!80!black, text width = 2cm] {\small $Conflict_{t + 1}$};
+
+    \node (Xt) [box, left of = Yt+1, node distance = 4cm, fill = yellow!80!black, text width = 1.75cm] {\small $\textbf{Theta}_{t}$};
+
+    \node (alpha) [box, below right = 1cm and 0.5cm of Xt, fill = yellow!80!black, text width = 0.75cm] {\small $\alpha_{i}$};
+    \node (epsilon) [box, right of = Yt+1, node distance = 2.5cm, fill = yellow!80!black, text width = 0.75cm] {\small $\epsilon_{it}$};
+
+    \draw [arrow] (Xt) -- (Yt+1);
+
+    \draw[<->, bend right, thick] (alpha.east) to (Yt+1.south);
+    \draw[<->, bend left, thick] (alpha.west) to (Xt.south);
+
+    \draw[<->, thick] (epsilon.west) to (Yt+1.east);
+\end{tikzpicture}
