@@ -68,10 +68,11 @@ After the Arab spring and the related outbreak of unforeseen violence, conflict 
 The sample for the underlying empirical analysis consists of 700.000 newspaper articles from three internationally-reporting newspapers between 1975 and 2015: the Economist\footnote{174.450 articles from 1975 onward}, the New York Times\footnote{363.275 articles from 1980 onward} and the Washington Post\footnote{185.523 articles from 1977 onward}. The newspapers cover in total 185 countries and the average yearly coverage amounts to 120 articles per country (with a range from 1 to 5.500). The authors use an unsupervised learning algorithm to break these articles into 15 distinct topic groups. \\
 
 The dependent variables on the other hand are constructed through battle-related deaths from the Uppsala Conflict Data Program (UCDP/PRIO). Following their definition, armed conflict (dep. var. 1) is defined as a contested incompatibility that concerns government and/or territory over which the use of armed force between two parties, of which at least one is the government of a state, has resulted in at least 25 battle-related deaths in one calendar year. Civil conflict (dep. var. 2) follows the same definition but requires at least 1.000 battle-related deaths in on calendar year. \\
+% Talk about variation in data and place map here?
 
 The panel summary statistics for these variables are given in Figure \ref{tab:xtsum}. (Provide futher explanation about the data)
 
-\subsection{Data Preparation for Model}
+\subsection{Data Preparation for Model} \label{data_prep}
 The authors clean and prepare their data before estimation. Some of these techniques we agree with, and others we have some theoretical issues with. The pros and cons of their methods will be discussed in further detail after the initial replication section.
 
 \begin{itemize}
@@ -79,7 +80,7 @@ The authors clean and prepare their data before estimation. Some of these techni
     \item The chosen conflict variable itself is not used as the dependent variable. The authors specifically look at two scenarios, either the onset or the incidence of conflict.
         \begin{itemize}
             \item Onset of conflict is defined as $Conflict_{t} = 0$ and $Conflict_{t + 1} = 1$. After creating this onset variable, all observations where $Conflict_{t} = 1$ are removed.
-            \item Inicidence of Conflict is defined as $Conflict_{t} = 1$ and $Conflict_{t + 1} = 1$. After creating this incidence variable, missing conflict observations are removed.
+            \item Incidence of Conflict is defined as $Conflict_{t} = 1$ and $Conflict_{t + 1} = 1$. After creating this incidence variable, missing conflict observations are removed.
             \item In our replication, we will narrow our focus to only the onset of conflict as the authors define it.
         \end{itemize}
     \item Observations where the average population over the entire sample is less than 1000, and where population data is missing are removed.
@@ -113,36 +114,29 @@ The aim of the model is to create forecasts for an armed conflict/ civil war out
 \section{Replication Estimations}
 
 
-\section{Extensions}
-After replicating the core findings of the paper, we plan to extend it in several dimensions, following a set of four steps. 
+\section{Extending the analysis}
+We extend the authors' analysis by shifting the focus from a purely forecast driven evaluation to a more thorough understanding of the model.
+This change of perspective ultimately aims at developing a model that is both better at truly assessing the underlying relationship between conflict
+and events/topics (?) and better at enabling an intuitive interpretation of the resulting estimates.
+We start by easing some of the restrictions the authors placed on the data, yielding a more balanced and complete panel data set.
+We then continue with an assessment of the suitability of a set of panel data models, namely pooled OLS, fixed effects (the authors' model of choice)
+and a dynamic panel data model, each in conjunction with the most suitable estimation strategy for this specific setting.
+Lastly, we provide a thorough discussion of the possible sources of bias and outline mitigation strategies.
 
-\subsection{Step I: Extended Data Analysis}
-Firstly, we will place emphasis on investigating the characteristics of the data at hand, i.e. analyzing the distribution of topic shares over time and their correlation with certain confounders. We control for possible correlations with country specific characteristics such as continents/regions and rainfall and check whether or not there exist outliers (e.g. countries with just one article a year or where coverage only occurred during conflict). We aim to build a sound argument for the resulting estimation method and try to answer if additional measures, such as employing panel robust standard errors, %Note: I was just thinking that they actually dont really care (or at least never talk about it) about the SE or significance for creating the binary variable.... Maybe we can do sth there too
-should be taken into consideration. We expect to additionally validate the authors' econometric approach with this exercise. 
+\subsection{Data Changes}
+In the initial analysis the most notable restriction of the data concerns the dependent variable.
+As discussed in section \ref{data_prep} the authors construct two variables, onset and incident and then limit the data to observations satisfying these conditions.
+This data transformation has its use when the sole purpose is to predict conflict in countries where it has not occurred before.
+It decreases, however, the validity of the model, since we artificially remove informational value and are left with highly unbalanced data.
+In order to build a better model we hence refrain from removing these observations and define ... as our dependent variable.
+% Add brief description of forward fill and basic data cleaning (e.g. population > 1000)
 
-\subsection{Step II: Enhanced Estimation}
-Based on the findings in step I we advance by employing different models in order to increase the estimates precision. Depending on said findings this will include: 
-\begin{itemize}
-    \item Conditional logit - including a discussion of necessary (strict) assumptions (i.e. fixed effects of a country that either always or never experience conflict)
-    \item Random Effects - the assumption that $\alpha_i$ is uncorrelated with the regressors (i.e. topic shares) is unlikely to hold. However, when interpreting the random effects estimator as a weighted average of within and between estimation its performance in conjunction with the results of the fixed effects estimation might allow for a clearer assessment of the underlying factors at play. Additionally, the random effects model allows for a straightforward out of sample prediction.
-    \item First Differences - relaxing the strict exogeneity assumption of the fixed effects model
-\end{itemize}
-
-
-
-\subsection{Step III: Data Changes}
-The key goal of the paper is to develop a forecasting strategy that allows to predict conflict in formerly peaceful regions, i.e. a regime change. We plan to additionally assess our model performance by building another dependent variable which captures regime change itself and regress on this newly constructed variable.
-
-% Moreover, there might be instances where a more timely prediction of conflict is of use. We will hence change the time horizon from yearly to quarterly. %%%% NOT POSSIBLE DUE TO SIZE OF SAMPLE %%%%%
-
-Moreover, we plan to include further lags of topics in order to capture a possible 'build up' of conflict over the preceding years. However, the topic composition might lack the level of granularity necessary to capture these patterns. 
+\subsection{Model Selection}
 
 
 
-\subsection{Step IV: Enhanced discussion}
-Finally our analysis aims at discovering possible additional sources of bias, to better understand model performance. However, given the data constraints, we do not expect to resolve these issues but rather add to the discussion. 
-For example, we implicitly assume that the newspapers have unbiased reporting. This assumption is likely not to hold. We will investigate options to control for an author specific bias. 
-Additionally, we will further investigate the (changing) importance of topics over the years. This exercise aims at distilling a set of topics that is predictive for each time span.
+\subsection{Possible Sources of Bias}
+
 
 \newpage
 
