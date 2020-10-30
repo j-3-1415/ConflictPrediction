@@ -827,9 +827,9 @@ model_params = {
 	"dep_var" : "bdbest25", #Civil War (1000) or Armed Conflict (25)
 	"onset" : True, #Onset of Incidence of Conflict
 	"all_indiv" : True, #Include all countries or not
-	"FE" : False, #Pooled Model or Fixed Effects
+	"FE" : True, #Pooled Model or Fixed Effects
 	'interactions' : None, #Set of interaction vars (can be None)
-	'Pooled' : True
+	'Pooled' : False
 }
 
 model = run_model(master, model_params)
@@ -895,13 +895,13 @@ def compute_roc(master, model_params):
 	overall_auc = roc_auc_score(true[dep_var], true['predictions'])
 	within_auc = roc_auc_score(true[dep_var], true['within_pred'])
 	
-	fig = plt.figure()
+	#fig = plt.figure()
 
-	fig.plot(overall[0], overall[1], 'b', color = 'black')
-	fig.plot(within[0], within[1], 'b', color = 'black', linestyle = 'dashed')
+	plt.plot(overall[0], overall[1], 'b', color = 'black')
+	plt.plot(within[0], within[1], 'b', color = 'black', linestyle = 'dashed')
 
-	fig.text(2, 6, r'Overall AUC = ' + str(overall_auc), fontsize = 10)
-	fig.text(0, 6, r'Within AUC = ' + str(within_auc), fontsize = 10)
+	plt.text(0.02, 0.07, r'Overall AUC = ' + str(round(overall_auc, 2)), fontsize = 10)
+	plt.text(0.02, 0.0, r'Within AUC = ' + str(round(within_auc, 2)), fontsize = 10)
 
 	plt.show()
 
