@@ -69,6 +69,7 @@ from sklearn.metrics import roc_curve, roc_auc_score
 import plotly.express as px
 from linearmodels.iv.results import compare
 from collections import OrderedDict
+import semopy
 
 global currDir #Define global variable of current directory
 global local #Define global variable of input for file source
@@ -271,6 +272,9 @@ master2.rename({'pop' : 'avpop'}, axis = 1, inplace = True)
 master = master.merge(master2, on = 'countryid', how = 'left')
 master = master[master['year'] > 1974]
 master = master.reset_index().drop('index', axis = 1)
+
+master.to_csv("STATATest.csv", index = False)
+master.to_stata("STATATest.dta")
 
 print("=======================================================================")
 print("Finished Running Code in Section 2")
