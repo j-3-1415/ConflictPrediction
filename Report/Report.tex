@@ -72,7 +72,7 @@ The dependent variables on the other hand are constructed through battle-related
 
 The panel summary statistics for these variables are given in Figure \ref{tab:xtsum}. (Provide futher explanation about the data)
 
-\subsection{Data Preparation for Model}
+\subsection{Data Preparation for Model} \label{data_prep}
 The authors clean and prepare their data before estimation. Some of these techniques we agree with, and others we have some theoretical issues with. The pros and cons of their methods will be discussed in further detail after the initial replication section.
 
 \begin{itemize}
@@ -120,12 +120,19 @@ This change of perspective ultimately aims at developing a model that is both be
 and events/topics (?) and better at enabling an intuitive interpretation of the resulting estimates.
 We start by easing some of the restrictions the authors placed on the data, yielding a more balanced and complete panel data set.
 We then continue with an assessment of the suitability of a set of panel data models, namely pooled OLS, fixed effects (the authors' model of choice)
-and a dynamic panel data model, each in conjunction with the most suitable estimation strategy in this specific setting.
+and a dynamic panel data model, each in conjunction with the most suitable estimation strategy for this specific setting.
 Lastly, we provide a thorough discussion of the possible sources of bias and outline mitigation strategies.
 
 \subsection{Data Changes}
+In the initial analysis the most notable restriction of the data concerns the dependent variable.
+As discussed in section \ref{data_prep} the authors construct two variables, onset and incident and then limit the data to observations satisfying these conditions.
+This data transformation has its use when the sole purpose is to predict conflict in countries where it has not occurred before.
+It decreases, however, the validity of the model, since we artificially remove informational value and are left with highly unbalanced data.
+In order to build a better model we hence refrain from removing these observations and define ... as our dependent variable.
+% Add brief description of forward fill and basic data cleaning (e.g. population > 1000)
 
 \subsection{Model Selection}
+
 
 
 \subsection{Possible Sources of Bias}
