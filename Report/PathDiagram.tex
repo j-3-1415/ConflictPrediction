@@ -1,0 +1,64 @@
+\tikzstyle{box} = [rectangle, rounded corners, minimum width=1cm, minimum height=1cm,text centered, draw=black]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+\begin{tikzpicture}[node distance = 2cm]
+    \node (Yt) [box, fill = yellow!80!black, text width = 2cm] {\small $Conflict_{t}$};
+    \node (Yt+1) [box, right of = Yt, node distance = 3.5cm, fill = yellow!80!black, text width = 2cm] {\small $Conflict_{t + 1}$};
+    \node (Yt+2) [box, right of = Yt+1, node distance = 3.5cm, fill = yellow!80!black, text width = 2cm] {\small $Conflict_{t + 2}$};
+    \node (YT) [box, right of = Yt+2, node distance = 3.5cm, fill = yellow!80!black, text width = 2cm] {\small $Conflict_{T}$};
+
+    \node (Et) [box, below of = Yt, node distance = 4cm, fill = yellow!80!black, text width = 2cm] {\small $Events_{t}$};
+    \node (Et+1) [box, right of = Et, node distance = 3.5cm, fill = yellow!80!black, text width = 2cm] {\small $Events_{t + 1}$};
+    \node (Et+2) [box, right of = Et+1, node distance = 3.5cm, fill = yellow!80!black, text width = 2cm] {\small $Events_{t + 2}$};
+    \node (ET) [box, right of = Et+2, node distance = 3.5cm, fill = yellow!80!black, text width = 2cm] {\small $Events_{T}$};
+
+    \node (Xt) [box, below of = Et, node distance = 2.5cm, fill = yellow!80!black, text width = 2cm] {\small $\textbf{Theta}_{t}$};
+    \node (Xt+1) [box, right of = Xt, node distance = 3.5cm, fill = yellow!80!black, text width = 2cm] {\small $\textbf{Theta}_{t + 1}$};
+    \node (Xt+2) [box, right of = Xt+1, node distance = 3.5cm, fill = yellow!80!black, text width = 2cm] {\small $\textbf{Theta}_{t + 2}$};
+    \node (XT) [box, right of = Xt+2, node distance = 3.5cm, fill = yellow!80!black, text width = 2cm] {\small $\textbf{Theta}_{T}$};
+    
+    \node (X) [fit = (Xt) (XT), draw, black, dotted] {};
+    \node (Y) [fit = (Yt) (YT), draw, black, dotted] {};
+    \node (E) [fit = (Et) (ET), draw, black, dotted] {};
+
+    \node (alpha) [box, below left = 1cm and 0.5cm of Yt, fill = yellow!80!black, text width = 0.75cm] {\small $\alpha_{i}$};
+    \node (epsilon) [box, right of = YT, node distance = 3cm, fill = yellow!80!black, text width = 0.75cm] {\small $\epsilon_{it}$};
+
+    \draw [arrow] (Yt) -- (Yt+1);
+    \draw [arrow] (Yt+1) -- (Yt+2);
+    \draw [arrow] (Yt+2) -- (YT);
+
+    \draw [arrow] (Et) -- (Yt+1);
+    \draw [arrow] (Et+1) -- (Yt+2);
+    \draw [arrow] (Et+2) -- (YT);
+
+    \draw [arrow] (Yt) -- (Et+1);
+    \draw [arrow] (Yt+1) -- (Et+2);
+    \draw [arrow] (Yt+2) -- (ET);
+
+    \draw [arrow] (Et) -- (Et+1);
+    \draw [arrow] (Et+1) -- (Et+2);
+    \draw [arrow] (Et+2) -- (ET);
+
+    \draw [arrow, <->, blue] (Et) -- (Yt);
+    \draw [arrow, <->, blue] (Et+1) -- (Yt+1);
+    \draw [arrow, <->, blue] (Et+2) -- (Yt+2);
+    \draw [arrow, <->, blue] (ET) -- (YT);
+
+    \draw [arrow, <-, green!45!black] (Xt) -- (Et);
+    \draw [arrow, <-, green!45!black] (Xt+1) -- (Et+1);
+    \draw [arrow, <-, green!45!black] (Xt+2) -- (Et+2);
+    \draw [arrow, <-, green!45!black] (XT) -- (ET);
+
+    \draw [arrow, <-, green!45!black, dotted] (Xt+1) -- (Et);
+    \draw [arrow, <-, green!45!black, dotted] (Xt+2) -- (Et+1);
+    \draw [arrow, <-, green!45!black, dotted] (XT) -- (Et+2);
+
+    \draw[<->, bend left, thick] (alpha.north) to (Y.west);
+    \draw[<->, bend right, thick] (alpha.south) to (E.west);
+
+    \draw[<->, thick] (epsilon.west) to (Y.east);
+
+    % \draw[arrow] (IV) -- (log_items) node[midway, fill = white, inner sep = 0pt] {IV};
+    % \draw[arrow, <->] (unobs) -- (log_items);
+\end{tikzpicture}
