@@ -17,6 +17,7 @@ import statsmodels.api as sm
 from itertools import product
 from linearmodels.panel import PanelOLS, compare
 from linearmodels.panel import PooledOLS, BetweenOLS, RandomEffects
+from linearmodels import IVSystemGMM
 import re
 import os
 import matplotlib.pyplot as plt
@@ -24,7 +25,6 @@ import sys
 import seaborn as sns
 import numpy as np
 import pandas as pd
-from stargazer.stargazer import Stargazer
 
 ######################>>>>>>>SECTION 1<<<<<<<<<#############################
 
@@ -628,10 +628,10 @@ def run_model(data, params):
     # Forward fill by group all the null token values
     data['tokens'] = data.groupby('countryid')['tokens'].ffill()
 
-    if onset:  # Condition for which instances of the dependent variable to remove
-        data = data[data[dep_var] != 1]  # Don't want repetition of conflict
-    else:
-        data = data[~data[dep_var].isnull()]
+    # if onset:  # Condition for which instances of the dependent variable to remove
+    #     data = data[data[dep_var] != 1]  # Don't want repetition of conflict
+    # else:
+    #     data = data[~data[dep_var].isnull()]
 
     # Only take data where tokens are non-zero and non-null
     data = data[(data['tokens'] > 0) & (~data['tokens'].isnull())]
@@ -645,6 +645,8 @@ def run_model(data, params):
 
     # Remove all years after fit_year, authors define a sample variable in code
     data = data[data['year'] <= fit_year]
+
+    return(data)
 
     data.set_index(['countryid', 'year'], inplace=True)
 
@@ -838,13 +840,15 @@ def out_latex(models, labs, model_params, file, type):
 # test = pd.read_stata(os.getcwd() + '/dataverse_files/data/test.dta')
 
 model_params = {
-    "fit_year": 2013,  # Year for fitting the model
+    "fit_year": 1995,  # Year for fitting the model
     "dep_var": "bdbest25",  # Civil War (1000) or Armed Conflict (25)
     "onset": True,  # Onset of Incidence of Conflict
     "all_indiv": True,  # Include all countries or not
     "FE": False,  # Pooled Model or Fixed Effects
     'interactions': None  # Set of interaction vars (can be None)
 }
+
+StataData = run_model(master, model_params)
 
 res_dict = OrderedDict()
 
@@ -937,3 +941,189 @@ print("=======================================================================")
 ################################################################################
 #########################>>>>>>>END SECTION 5<<<<<<<<<##########################
 ################################################################################
+
+################################################################################
+###########################>>>>>>>SECTION 6<<<<<<<<<############################
+#######################>>>>>>>>GMM ESTIMATION<<<<<<<############################
+################################################################################
+
+print("=======================================================================")
+print("Beginning Running Code in Section 5")
+print("=======================================================================")
+
+
+def gmm(data, params):
+
+    ########################################################################
+    # Input Notes
+    ########################################################################
+    # data should be master file
+    # fit year is year t, before prediction year
+
+    fit_year = params['fit_year']
+
+    dep_var = params['dep_var']  # dep var should be bdbest25 or bdbest1000
+
+    # If not all_indiv, then removes counties with no conflict in the sample
+    all_indiv = params['all_indiv']
+
+    # Get the list of variables to interact with the theta shares
+    # This input diverges from the authors technique, so results will differ
+    interactions = params['interactions']
+
+    dep_lags = params['dep_lags']
+
+    # The order of null filling and removal is done according to the authors
+    #       code, changing the order changes the result
+    ############################################################################
+    # Input Notes
+    ############################################################################
+
+    data = data.copy(deep=True)  # Make a copy so dataframe not overwritten
+    data = data[data['theta_year'] == (fit_year + 1)]
+
+    # Define the column names of thetas to be used as regressors
+    thetas = ["ste_theta" + str(i) for i in range(1, 15)]
+
+    data['Lag1' + dep_var] = data.groupby('countryid')[dep_var].shift()
+    data['Diff1' + dep_var] = data[dep_var] - data['Lag1' + dep_var]
+
+    for i in range(1, 4):
+        data["Lag" + str(i + 1) +
+             dep_var] = data.groupby('countryid')[dep_var].shift(i + 1)
+        data['Diff' + str(i + 1) + dep_var] = data.groupby(
+            'countryid')['Diff' + str(i) + dep_var].shift()
+
+    # Forward fill by group all the null values in the regressors
+    data[thetas] = data.groupby('countryid')[thetas].ffill()
+
+    for col in thetas:
+        data["Lag1" + col] = data.groupby('countryid')[col].shift()
+        data['Diff1' + col] = data[col] - data['Lag1' + col]
+        for i in range(1, 4):
+            data['Lag' + str(i + 1) +
+                 col] = data.groupby('countryid')[col].shift(i + 1)
+            data['Diff' + str(i + 1) + col] = data.groupby(
+                'countryid')['Diff' + str(i) + col].shift()
+
+    # Forward fill by group all the null token values
+    data['tokens'] = data.groupby('countryid')['tokens'].ffill()
+
+    # Condition for removing countries with population less than 1000 and nulls
+    data = data[(data['avpop'] >= 1000) & (~data['avpop'].isnull())]
+
+    # Only take data where tokens are non-zero and non-null
+    data = data[(data['tokens'] > 0) & (~data['tokens'].isnull())]
+
+    # If individuals with no conflict are to be removed
+    if not all_indiv:
+        total = data.groupby('countryid', as_index=False)[dep_var].sum()
+        total = total.rename({dep_var: 'total_conflict'}, axis=1)
+        data = data.merge(total, how='left', on='countryid')
+        data = data[data['total_conflict'] > 0]
+
+    # Remove all years after fit_year, authors define a sample variable in code
+    data = data[(data['year'] <= fit_year) & (data['year'] >= 1992)]
+
+    return(data)
+
+    # data = data.dropna(axis=0)
+
+    z_level = ["Diff" + str(i + 1) + "ste_theta" + str(j)
+               for i in range(1, 2) for j in range(1, 2)]
+    z_level += ["Diff" + str(i + 1) + dep_var for i in range(1, (dep_lags + 1))]
+
+    endog_level = ['Lag1ste_theta' + str(j) for j in range(1, 2)]
+    endog_level += ['Lag1' + dep_var]
+
+    dep_level = dep_var
+
+    z_diff = ["Lag" + str(i + 1) + "ste_theta" + str(j)
+              for i in range(1, 2) for j in range(1, 2)]
+    z_diff += ["Lag" + str(i + 1) + dep_var for i in range(1, (dep_lags + 1))]
+
+    endog_diff = ['Diff2ste_theta' + str(j) for j in range(1, 2)]
+    endog_diff += ['Diff2' + dep_var]
+
+    dep_diff = 'Diff1' + dep_var
+
+    formula = dict(
+        level={'dependent': data[dep_level],
+               'endog': data[endog_level], 'instruments': data[z_level]},
+
+        diff={'dependent': data[dep_diff],
+              'endog': data[endog_diff], 'instruments': data[z_diff]})
+
+    system_gmm = IVSystemGMM(formula, weight_type='robust')
+
+    # system_gmm_res = system_gmm.fit(cov_type="robust")
+
+    return(system_gmm)
+
+
+print("=======================================================================")
+print("Finished Running Code in Section 4")
+print("=======================================================================")
+
+model_params = {
+    "fit_year": 1995,  # Year for fitting the model
+    "dep_var": "bdbest25",  # Civil War (1000) or Armed Conflict (25)
+    "onset": True,  # Onset of Incidence of Conflict
+    "all_indiv": True,  # Include all countries or not
+    "FE": False,  # Pooled Model or Fixed Effects
+    'interactions': None,  # Set of interaction vars (can be None)
+    'dep_lags': 1
+}
+
+test = gmm(master, model_params)
+dep_var = 'bdbest25'
+cols = ['ste_theta1']
+test = test[['countryid', 'year', dep_var] + cols]
+test['year'] = test['year'] - test['year'].min() + 1
+max_year = int(test['year'].max())
+test['year'] = test['year'].apply(lambda x: 'Year' + str(int(x)))
+test = test.pivot(index='countryid', columns='year')[['bdbest25', 'ste_theta1']]
+test.columns = [col[1] + "*" + col[0]
+                for col in test.columns.values]
+
+
+for i in range(1, max_year):
+    for col in [dep_var] + cols:
+        diff_col = 'Diff' + "*" + str(i + 1) + "*" + str(i) + "*" + col
+        col1 = 'Year' + str(i + 1) + "*" + col
+        col2 = 'Year' + str(i) + "*" + col
+        test[diff_col] = test[col1] - test[col2]
+
+
+formula = dict()
+
+for i in range(1, (max_year - 1)):
+    l_dep = 'Year' + str(i + 2) + "*" + dep_var
+    d_dep = 'Diff*' + str(i + 2) + '*' + str(i + 1) + '*' + dep_var
+    l_endog = ['Year' + str(i + 1) + '*' + col for col in cols + [dep_var]]
+    d_endog = ['Diff*' + str(i + 1) + "*" + str(i) +
+               "*" + col for col in cols + [dep_var]]
+    d_inst = ['Year' + str(i) + "*" + col for col in cols + [dep_var]]
+    l_inst = d_endog
+    formula['level' + str(i)] = {'dependent': test[l_dep],
+                                 'endog': test[l_endog], 'instruments': test[l_inst]}
+    formula['diff' + str(i)] = {'dependent': test[d_dep],
+                                'endog': test[d_endog], 'instruments': test[d_inst]}
+
+
+mod = IVSystemGMM(formula, weight_type='robust')
+constraints = []
+for col in mod.param_names:
+    var = col.split("*")[-1]
+    for col2 in [i for i in mod.param_names if i.split("*")[-1] == var]:
+
+mod.add_constraints(r=pd.DataFrame(
+    [[1, -1, 0, 0], [0, 0, 1, -1], [0, 1, -1, 0]]))
+fit = mod.fit()
+print(fit.summary)
+
+
+################################################################################
+#########################>>>>>>>END SECTION 6<<<<<<<<<##########################
+################################################################################
+#
