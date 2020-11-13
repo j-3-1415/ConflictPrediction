@@ -112,7 +112,9 @@ The aim of the model is to create forecasts for an armed conflict/ civil war out
 3) Assess performance of overall and within model by considering forecasting performance for any given value c through ROC curves 
 
 \section{Replication Estimations}
+In Table \ref{tab::armed} and Table \ref{tab::civil} we provide a replication of the models used by the authors. They use a fixed effects model, and we show this compared to both a Pooled OLS model and a FE model where the topic shares are additionally interacted with an autocracy dummy. The interaction coefficients are omitted from the regression output.
 
+We also replicated the ROC curve, comparing the false positive prediction rate to the true positive predictoin rate, in Figure \ref{rocfe}. As the authors found in their research, the predictive quality of the estimation drops when excluding the between variation from the prediction.
 
 \section{Extending the analysis}
 We extend the authors' analysis by shifting the focus from a purely forecast driven evaluation to a more thorough understanding of the model.
@@ -142,33 +144,70 @@ In order to build a better model we hence refrain from removing these observatio
 
 \begin{appendix}
     \section{Figures and Tables}
-    \input{xtsum} 
+    \input{xtsum}
 
-    % \begin{figure}[!htbp]
-    %     \caption{Authors' Model Hypothesis}
-    %     \centering
-    %     \input{InitialModel}
-    %     \label{InitMod}
-    % \end{figure}
+    \clearpage
+    \newpage
 
-    \begin{figure}[!htbp]
+    \begin{figure}[!h]
         \caption{Path Diagram of Model Hypothesis}
         \centering
         \input{PathDiagram}
         \label{path}
     \end{figure}
 
-    \begin{table}
-        \caption{Initial Comparison of Panel Models}
+    \clearpage
+    \newpage
+
+    \begin{table}[!h]
+        \caption{Initial Panel Models: Armed Conflict}
         \centering
-        \input{OLSCompare}
-        \label{compare}
+        \input{OLSArmed}
+        \label{tab::armed}
     \end{table}
+
+    \begin{table}[!h]
+        \caption{Initial Panel Models: Civil War}
+        \centering
+        \input{OLSCivil}
+        \label{tab::civil}
+    \end{table}
+
+    \begin{figure}[!h]
+        \centering
+        \includegraphics{ROC_FE.png}
+        \caption{ROC Curve}
+        \label{rocfe}
+    \end{figure}
+
+    \begin{table}[!h]
+        \caption{Blundell-Bond System Models}
+        \begin{minipage}{.5\linewidth}
+          \input{GMMArmed}
+        \end{minipage}%
+        \begin{minipage}{.5\linewidth}
+            \input{GMMCivil}
+        \end{minipage}
+        \label{gmm_mods}
+    \end{table}
+
+    \clearpage
+    \newpage
+
+    \begin{figure}[!h]
+        \centering
+        \includegraphics{thetas_total.png}
+        \caption{Topic Shares over Time}
+        \label{tstopics}
+    \end{figure}
+
 \end{appendix}
+
+\clearpage
 
 \newpage
 
-\section*{References}
+\section*{References}[!h]
 Besley, Timothy and Torsten Persson. 2011. Pillars of prosperity: The political economics \newline \indent of development clusters. Princeton University Press.\vspace{0.25cm}
 
 \noindent Chadefaux, Thomas. 2014. "Early warning signals for war in the news." Journal of Peace \newline \indent Research 51(1):5-18.\vspace{0.25cm}
