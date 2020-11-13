@@ -78,7 +78,7 @@ global FileDict  # Define global variable for file importation
 currDir = os.getcwd()  # Define current directory based on python script
 
 # Get user input whether files should be imported locally or from Dropbox
-local = input("""Import data Locally? 'True' or 'False': 
+local = input("""Import data Locally? 'True' or 'False':
     If 'False' Then Comes from Dropbox Online: """)
 
 # Create a dictionary of files paths for dropbox. Used in FileRead function
@@ -158,14 +158,14 @@ def FileRead(KeyName):
 # Create a dictionary with labels for each column
 labs = {'year': 'Article Year', 'theta_year': 'Topic Year',
         'countryid': 'CountryID', 'pop': 'Country Population',
-        'ste_theta0': 'Topic 1 Share', 'ste_theta1': 'Topic 2 Share',
-        'ste_theta2': 'Topic 3 Share', 'ste_theta3': 'Topic 4 Share',
-        'ste_theta4': 'Topic 5 Share', 'ste_theta5': 'Topic 6 Share',
-        'ste_theta6': 'Topic 7 Share', 'ste_theta7': 'Topic 8 Share',
-        'ste_theta8': 'Topic 9 Share', 'ste_theta9': 'Topic 10 Share',
-        'ste_theta10': 'Topic 11 Share', 'ste_theta11': 'Topic 12 Share',
-        'ste_theta12': 'Topic 13 Share', 'ste_theta13': 'Topic 14 Share',
-        'ste_theta14': 'Topic 15 Share', 'bdbest1000': "Civil War",
+        'theta0': 'Topic 1 Share', 'theta1': 'Topic 2 Share',
+        'theta2': 'Topic 3 Share', 'theta3': 'Topic 4 Share',
+        'theta4': 'Topic 5 Share', 'theta5': 'Topic 6 Share',
+        'theta6': 'Topic 7 Share', 'theta7': 'Topic 8 Share',
+        'theta8': 'Topic 9 Share', 'theta9': 'Topic 10 Share',
+        'theta10': 'Topic 11 Share', 'theta11': 'Topic 12 Share',
+        'theta12': 'Topic 13 Share', 'theta13': 'Topic 14 Share',
+        'theta14': 'Topic 15 Share', 'bdbest1000': "Civil War",
         'bdbest25': "Armed Conflict", "autoc": "Autocracy",
         "democ": 'Democracy', 'const': 'Constant'}
 
@@ -203,39 +203,13 @@ own = ['region_o', 'subregion_o', 'discrimshare']
 interactions = ['autoc']
 own.extend(interactions)
 
-labs.update({"ste_theta" + str(i) + "_BY_" + inter:
-             labs["ste_theta" + str(i)] + " by " + labs[inter]
+labs.update({"theta" + str(i) + "_BY_" + inter:
+             labs["theta" + str(i)] + " by " + labs[inter]
              for i in range(0, 15) for inter in interactions})
 
-# in the paper they specify different sets of controls
-# control_sets = {
-#   'chadefaux': ['cha_count', 'total_count', 'total_count_count', 'polity2',
-#       'sincelast', 'sincelast_sq', 'sincelast_cu'],
-#   'chadefauxshort': ['cha_count', 'total_count', 'total_count_count'],
-#   'ajps': ['democ_3', 'democ_4', 'democ_5', 'democ_6', 'lnchildmortality', 'armedconf4', 'discrimshare'],
-#   'lasso': ['democ_3', 'democ_4', 'democ_6', 'childmortality', 'discrimshare', 'excludedshare', 'dissgov', 'ethnicgov'],
-#   'ward': ['high', 'low', 'autoc', 'democ', 'excludedshare', 'excludedshare_sq', 'lnchildmortality',  'armedconf4', 'discrimshare'],
-#   'events': ['govopp', 'dissgov', 'domgov', 'ethnicgov'],
-#   'pillars': ['nat_dum', 'nat_dum_goodinst',  'scmem', 'scmem_goodinst',  'scmem_cold', 'scmem_cold_goodinst']
-# }
+lag_labs = {key: "Lag of " + val for key, val in labs.items()}
 
-# get user input which set of controls to use
-# print("""Available sets of controls:
-# - chadefaux: cha_count total_count total_count_count polity2 sincelast sincelast_sq sincelast_cu
-# - chadefauxshort: cha_count total_count total_count_count
-# - ajps: democ_3 democ_4 democ_5 democ_6 lnchildmortality  armedconf4 discrimshare
-# - lasso: democ_3 democ_4 democ_6 childmortality discrimshare excludedshare dissgov ethnicgov
-# - ward: high low autoc democ excludedshare excludedshare_sq lnchildmortality  armedconf4 discrimshare
-# - wardzwei: highdum lowdum autoc democ excludedshare excludedshare_sq lnchildmortality  armedconf4 discrimshare
-# - events: govopp dissgov domgov ethnicgov
-# - pillars: nat_dum nat_dum_goodinst  scmem scmem_goodinst  scmem_cold scmem_cold_goodinst
-# """)
-# controls_choice = input("Please choose 'own' if you specified your own controls or choose instead one of the sets above: ").lower()
-
-# if controls_choice != 'own':
-# controls = control_sets[controls_choice]
-# else:
-# controls = own
+all_labs = {'Labs': labs, 'Lag_Labs': lag_labs}
 
 # list to store the ready to go regression data for each year
 master_data = []
@@ -276,9 +250,8 @@ master2.rename({'pop': 'avpop'}, axis=1, inplace=True)
 master = master.merge(master2, on='countryid', how='left')
 master = master[master['year'] > 1974]
 master = master.reset_index().drop('index', axis=1)
-
-# master.to_csv("STATATest.csv", index = False)
-# master.to_stata("STATATest.dta")
+master = master.rename(
+    columns={'ste_theta' + str(i): 'theta' + str(i) for i in range(0, 15)})
 
 print("=======================================================================")
 print("Finished Running Code in Section 2")
@@ -368,12 +341,6 @@ def xtsum(data, labs, indiv, time):
 
         return(df)
 
-# return the summary dataframe
-# df = xtsum(master2013, labs, 'countryid', 'year')
-# Write the dataframe to latex with a few extra formatting add ons
-# df.to_latex("xtsum.tex", bold_rows = True, multirow = True,
-#   float_format = "{:0.3f}".format)
-
 ################################################################################
 ###########################>>>>>>>SECTION 3.5<<<<<<<<<##########################
 #####################>>>>>>>>Visual Analysis<<<<<<<#############################
@@ -389,11 +356,13 @@ master_plot = master[master['theta_year'] == 2013][sum_cols]
 master_plot.reset_index(inplace=True)
 master_plot.drop('index', axis=1, inplace=True)
 
-topic_names = {'ste_theta0': 'Industry', 'ste_theta1': 'CivicLife1', 'ste_theta2': 'Asia',
-               'ste_theta3': 'Sports', 'ste_theta4': 'Justice', 'ste_theta5': 'Tourism',
-               'ste_theta6': 'Politics', 'ste_theta7': 'Conflict1', 'ste_theta8': 'Business',
-               'ste_theta9': 'Economics', 'ste_theta10': 'InterRelations1', 'ste_theta11': 'InterRelations2',
-               'ste_theta12': 'Conflict3', 'ste_theta13': 'CivicLife2', 'ste_theta14': 'Conflict2'}
+topic_names = {'theta0': 'Industry', 'theta1': 'CivicLife1', 'theta2': 'Asia',
+               'theta3': 'Sports', 'theta4': 'Justice', 'theta5': 'Tourism',
+               'theta6': 'Politics', 'theta7': 'Conflict1',
+               'theta8': 'Business', 'theta9': 'Economics',
+               'theta10': 'InterRelations1',
+               'theta11': 'InterRelations2', 'theta12': 'Conflict3',
+               'theta13': 'CivicLife2', 'theta14': 'Conflict2'}
 
 master_plot.rename(columns=topic_names, inplace=True)
 
@@ -422,7 +391,7 @@ master_plot_conflict_long = master_plot_conflict_long[master_plot_conflict_long[
 
 # plot joint theta development not distinguishing between countries
 sns.lineplot(data=master_plot_conflict_long, x="year", y="value", hue="variable")
-plt.savefig(currDir + str('/Output/thetas_total.png'))
+plt.savefig(currDir + str('/Report/thetas_total.png'))
 plt.close()
 
 #  plot thetas for each country individually
@@ -442,7 +411,7 @@ fig.legend(handles, labels, loc='lower center', ncol=4)
 fig.set_size_inches(25, 25)
 fig.tight_layout(rect=[0, 0.04, 1, 0.96])
 fig.suptitle('Distributions of thetas per country')
-fig.savefig(currDir + str('/Output/thetas_perCountry.png'), dpi=100)
+fig.savefig(currDir + str('/Report/thetas_perCountry.png'), dpi=100)
 plt.close(fig)
 
 # replicate this exercise for regions
@@ -460,7 +429,7 @@ fig.legend(handles, labels, loc='lower center', ncol=4)
 fig.set_size_inches(18.5, 18.5)
 fig.tight_layout(rect=[0, 0.04, 1, 0.96])
 fig.suptitle('Distributions of thetas per region')
-fig.savefig(currDir + str('/Output/thetas_perRegion.png'), dpi=100)
+fig.savefig(currDir + str('/Report/thetas_perRegion.png'), dpi=100)
 plt.close(fig)
 
 # replicate this exercise for subregions
@@ -478,7 +447,7 @@ fig.legend(handles, labels, loc='lower center', ncol=4)
 fig.set_size_inches(18.5, 18.5)
 fig.tight_layout(rect=[0, 0.04, 1, 0.96])
 fig.suptitle('Distributions of thetas per subregion')
-fig.savefig(currDir + str('/Output/thetas_perSubregion.png'), dpi=100)
+fig.savefig(currDir + str('/Report/thetas_perSubregion.png'), dpi=100)
 plt.close(fig)
 
 # scatter of % discrimination vs theta, plot for each year
@@ -497,7 +466,7 @@ fig.legend(handles, labels, loc='lower center', ncol=4)
 fig.set_size_inches(18.5, 18.5)
 fig.tight_layout(rect=[0, 0.04, 1, 0.96])
 fig.suptitle('Thetas vs. share of discrimination per year')
-fig.savefig(currDir + str('/Output/thetas_discrim.png'), dpi=100)
+fig.savefig(currDir + str('/Report/thetas_discrim.png'), dpi=100)
 plt.close(fig)
 
 # conflict map to visualize variation in dependent variable
@@ -512,7 +481,7 @@ fig = px.choropleth(master2013_map, locations="isocode",
                     hover_name="country",  # column to add to hover information
                     color_continuous_scale=px.colors.sequential.Reds)
 
-fig.write_html(currDir + '/Output/conflict_map.html')
+fig.write_html(currDir + '/Report/conflict_map.html')
 
 
 print("=======================================================================")
@@ -531,42 +500,6 @@ print("=======================================================================")
 print("=======================================================================")
 print("Beginning Running Code in Section 4")
 print("=======================================================================")
-
-# def data_compare(data, test, fit_year, compare_vars, dep_var, onset = True):
-
-#   data = data.copy()
-#   test = test.copy()
-#   thetas = [col for col in data.columns if \
-#       ('ste_theta' in col)&(col != 'ste_theta0')]
-
-#   compare_vars = thetas + compare_vars
-
-#   test = test[(test['year'] > 1974)&(test['year'] <= fit_year)&
-#       (test['avpop'] >= 1000)&(test['tokens'] > 0)&(~test['avpop'].isnull())&
-#       (~test['tokens'].isnull())&(test['samp'] == 1)]
-
-#   if onset:
-#       test = test[test[dep_var] != 1]
-#   else:
-#       test = test[~test[dep_var].isnull()]
-
-#   test = test[['countryid', 'year'] + compare_vars]
-#   test = test.reset_index()
-#   data = data.reset_index()
-
-#   print('The number of rows of the data from STATA: ' + str(test.shape[0]))
-#   print('The number of rows of the data from Python: ' + str(data.shape[0]))
-
-#   for var in compare_vars:
-
-#       equality = all(data[var].values == test[var].values)
-#       print('For the variable ' + str(var) +
-#           ', the columns in STATA and Python are equal: ' + str(equality))
-#       if not equality:
-#           print(data[data[var] != test[var]][['countryid', 'year', var]].head())
-#           print(test[data[var] != test[var]][['countryid', 'year', var]].head())
-
-# Define a function to run a model for a single theta year with inputs
 
 
 def run_model(data, params):
@@ -607,7 +540,7 @@ def run_model(data, params):
     data = data[data['theta_year'] == (fit_year + 1)]
 
     # Define the column names of thetas to be used as regressors
-    thetas = ["ste_theta" + str(i) for i in range(1, 15)]
+    thetas = ["theta" + str(i) for i in range(1, 15)]
 
     # One before here means you are in t (one before the next period)
     data['one_before'] = data.groupby('countryid')[dep_var].shift(-1)
@@ -628,10 +561,10 @@ def run_model(data, params):
     # Forward fill by group all the null token values
     data['tokens'] = data.groupby('countryid')['tokens'].ffill()
 
-    # if onset:  # Condition for which instances of the dependent variable to remove
-    #     data = data[data[dep_var] != 1]  # Don't want repetition of conflict
-    # else:
-    #     data = data[~data[dep_var].isnull()]
+    if onset:  # Condition for which instances of the dependent variable to remove
+        data = data[data[dep_var] != 1]  # Don't want repetition of conflict
+    else:
+        data = data[~data[dep_var].isnull()]
 
     # Only take data where tokens are non-zero and non-null
     data = data[(data['tokens'] > 0) & (~data['tokens'].isnull())]
@@ -646,8 +579,6 @@ def run_model(data, params):
     # Remove all years after fit_year, authors define a sample variable in code
     data = data[data['year'] <= fit_year]
 
-    return(data)
-
     data.set_index(['countryid', 'year'], inplace=True)
 
     regressors = thetas
@@ -655,7 +586,7 @@ def run_model(data, params):
     # If the interaction list is not empty, add the interactions
     if interactions is not None:
         for interact in interactions:
-            cols = [x + "_BY_" + interact for x in thetas]
+            cols = [x + "BY" + interact for x in thetas]
             data[cols] = data[thetas].multiply(data[interact], axis='index')
             regressors.extend(cols)
 
@@ -702,7 +633,7 @@ def pred_model(data, model, params):
     data = data.set_index(['countryid', 'year'])
 
     # Get the columns for the theta regressors
-    thetas = ["ste_theta" + str(i) for i in range(1, 15)]
+    thetas = ["theta" + str(i) for i in range(1, 15)]
 
     regressors = thetas
 
@@ -763,6 +694,11 @@ def out_latex(models, labs, model_params, file, type):
     # file should be the file path to write latex string to
     # If type is custom then implements latex table written by hand, else
     #   the latex table is the one constructed by python (a little busy)
+    labs = labs.copy()
+    lag_labs = labs['Lag_Labs']
+    labs = labs['Labs']
+
+    use_lags = model_params['lagged_regs']
     ############################################################################
     # Input Notes
     ############################################################################
@@ -778,7 +714,7 @@ def out_latex(models, labs, model_params, file, type):
 
     param_ind = models[list(models.keys())[0]].params.index
 
-    indices = [i for i in range(len(param_ind)) if "_BY_" not in param_ind[i]]
+    indices = [i for i in range(len(param_ind)) if "BY" not in param_ind[i]]
 
     # Get coefficient values
     params = [models[key].params.values[indices] for key in models]
@@ -787,7 +723,17 @@ def out_latex(models, labs, model_params, file, type):
     # Get the pvalue values
     pvals = [models[key].pvalues.values[indices] for key in models]
     # List of Labels
-    lab_list = [labs[i] for i in param_ind[indices]]
+    if not use_lags:
+        lab_list = [labs[i] for i in param_ind[indices]]
+    else:
+        lab_list = [lag_labs[i.split("_")[-1]] for i in param_ind[indices]]
+
+    if use_lags:
+        num_params = len(set([i.split("_")[-1] for i in param_ind[indices]]))
+        params = params[:num_params]
+        errors = errors[:num_params]
+        pvals = pvals[:num_params]
+        lab_list = lab_list[:num_params]
 
     # Iterate through the number of coefficients
     for i in range(len(lab_list)):
@@ -816,18 +762,28 @@ def out_latex(models, labs, model_params, file, type):
 
         string += "\\\\ \n"
 
-    # Finish the tabular definition
+    # Include whether Time/Entity Effects were used
     string += "\\hline \\\\[-1.8ex]\n \\\\ Included Effects: "
 
     for model in models:
-        effects = models[model].included_effects
+        if not use_lags:
+            effects = models[model].included_effects
+        else:
+            effects = ['Time', 'Entity']
         string += " & " + ", ".join([effect for effect in effects])
+
+    # Include R-Squared in the outputs
+    string += "\\\\ R-Squared: "
+    string += " & " + \
+        "&".join(["%.3f" % model.rsquared
+                  for model in models.values()])
+
+    # Include number of observations
+    string += "\\\\ Observations: "
+    string += " & " + "&".join([str(model.nobs) for model in models.values()])
 
     string += "\\end{tabular}\n\\end{center}"
 
-    # Include notes for included effects and for robust standard errors
-    # string += "\nIncluded Effects: Time" + \
-    #     ["", ", Entity"][model_params["FE"]]
     string += "Cluster Robust Standard Errors"
 
     # After creating latex string, write to tex file
@@ -835,20 +791,16 @@ def out_latex(models, labs, model_params, file, type):
         f.write(string)
 
 
-# compare_vars = ['tokens', 'bdbest25', 'one_before', 'avpop']
-
-# test = pd.read_stata(os.getcwd() + '/dataverse_files/data/test.dta')
-
 model_params = {
-    "fit_year": 1995,  # Year for fitting the model
+    "fit_year": 2013,  # Year for fitting the model
     "dep_var": "bdbest25",  # Civil War (1000) or Armed Conflict (25)
     "onset": True,  # Onset of Incidence of Conflict
     "all_indiv": True,  # Include all countries or not
     "FE": False,  # Pooled Model or Fixed Effects
-    'interactions': None  # Set of interaction vars (can be None)
+    'interactions': None,  # Set of interaction vars (can be None)
+    'dep_lags': 1,  # Number of lags in gmm
+    'lagged_regs': False  # Whether blundell-bond is being used
 }
-
-StataData = run_model(master, model_params)
 
 res_dict = OrderedDict()
 
@@ -860,11 +812,24 @@ res_dict['FE'] = run_model(master, model_params)
 model_params['interactions'] = interactions
 res_dict['FEInteract'] = run_model(master, model_params)
 
-compare_file = currDir + "/Report/OLSCompare.tex"
-out_latex(res_dict, labs, model_params, compare_file, "custom")
+compare_file = currDir + "/Report/OLSArmed.tex"
+out_latex(res_dict, all_labs, model_params, compare_file, "custom")
 
-preds = pred_model(master, model, model_params)
-print(preds)
+model_params['dep_var'] = 'bdbest1000'
+model_params['FE'] = False
+model_params['interactions'] = None
+
+res_dict = OrderedDict()
+res_dict['Pooled'] = run_model(master, model_params)
+
+model_params['FE'] = True
+res_dict['FE'] = run_model(master, model_params)
+
+model_params['interactions'] = interactions
+res_dict['FEInteract'] = run_model(master, model_params)
+
+compare_file = currDir + "/Report/OLSCivil.tex"
+out_latex(res_dict, all_labs, model_params, compare_file, "custom")
 
 print("=======================================================================")
 print("Finished Running Code in Section 4")
@@ -884,7 +849,7 @@ print("Beginning Running Code in Section 5")
 print("=======================================================================")
 
 
-def compute_roc(master, model_params):
+def compute_roc(master, model_params, file):
 
     dep_var = model_params['dep_var']
 
@@ -919,20 +884,40 @@ def compute_roc(master, model_params):
     overall_auc = roc_auc_score(true[dep_var], true['predictions'])
     within_auc = roc_auc_score(true[dep_var], true['within_pred'])
 
-    #fig = plt.figure()
+    fig, ax = plt.subplots(nrows=1, ncols=1)
 
-    plt.plot(overall[0], overall[1], 'b', color='black')
-    plt.plot(within[0], within[1], 'b', color='black', linestyle='dashed')
+    plt.plot(overall[0], overall[1], 'b',
+             color='black', label='Overall Prediciton')
+    plt.plot(within[0], within[1], 'b', color='blue',
+             linestyle='dashed', label='Within Prediction')
+
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    plt.legend(loc='lower right')
+    fig.suptitle("ROC Curve: " + ['Incidence', 'Onset'][model_params['onset']] +
+                 " of " + all_labs['Labs'][model_params['dep_var']])
 
     plt.text(0.02, 0.07, r'Overall AUC = ' +
              str(round(overall_auc, 2)), fontsize=10)
     plt.text(0.02, 0.0, r'Within AUC = ' +
              str(round(within_auc, 2)), fontsize=10)
 
-    plt.show()
+    fig.savefig(file)
 
-    # return(true)
 
+model_params = {
+    "fit_year": 2013,  # Year for fitting the model
+    "dep_var": "bdbest25",  # Civil War (1000) or Armed Conflict (25)
+    "onset": True,  # Onset of Incidence of Conflict
+    "all_indiv": True,  # Include all countries or not
+    "FE": True,  # Pooled Model or Fixed Effects
+    'interactions': None,  # Set of interaction vars (can be None)
+    'dep_lags': 1,  # Number of lags in gmm
+    'lagged_regs': False  # Whether blundell-bond is being used
+}
+
+file = currDir + "/Report/ROC_FE.png"
+compute_roc(master, model_params, file)
 
 print("=======================================================================")
 print("Finished Running Code in Section 4")
@@ -952,7 +937,7 @@ print("Beginning Running Code in Section 5")
 print("=======================================================================")
 
 
-def gmm(data, params):
+def blundell_bond(data, params):
 
     ########################################################################
     # Input Notes
@@ -971,7 +956,7 @@ def gmm(data, params):
     # This input diverges from the authors technique, so results will differ
     interactions = params['interactions']
 
-    dep_lags = params['dep_lags']
+    max_lags = params['max_lags'] - 1
 
     # The order of null filling and removal is done according to the authors
     #       code, changing the order changes the result
@@ -983,28 +968,19 @@ def gmm(data, params):
     data = data[data['theta_year'] == (fit_year + 1)]
 
     # Define the column names of thetas to be used as regressors
-    thetas = ["ste_theta" + str(i) for i in range(1, 15)]
-
-    data['Lag1' + dep_var] = data.groupby('countryid')[dep_var].shift()
-    data['Diff1' + dep_var] = data[dep_var] - data['Lag1' + dep_var]
-
-    for i in range(1, 4):
-        data["Lag" + str(i + 1) +
-             dep_var] = data.groupby('countryid')[dep_var].shift(i + 1)
-        data['Diff' + str(i + 1) + dep_var] = data.groupby(
-            'countryid')['Diff' + str(i) + dep_var].shift()
+    thetas = ["theta" + str(i) for i in range(1, 15)]
 
     # Forward fill by group all the null values in the regressors
     data[thetas] = data.groupby('countryid')[thetas].ffill()
+    regressors = thetas
+    regressors.append(dep_var)
 
-    for col in thetas:
-        data["Lag1" + col] = data.groupby('countryid')[col].shift()
-        data['Diff1' + col] = data[col] - data['Lag1' + col]
-        for i in range(1, 4):
-            data['Lag' + str(i + 1) +
-                 col] = data.groupby('countryid')[col].shift(i + 1)
-            data['Diff' + str(i + 1) + col] = data.groupby(
-                'countryid')['Diff' + str(i) + col].shift()
+    # If the interaction list is not empty, add the interactions
+    if interactions is not None:
+        for interact in interactions:
+            cols = [x + "BY" + interact for x in thetas]
+            data[cols] = data[thetas].multiply(data[interact], axis='index')
+            regressors.extend(cols)
 
     # Forward fill by group all the null token values
     data['tokens'] = data.groupby('countryid')['tokens'].ffill()
@@ -1023,42 +999,63 @@ def gmm(data, params):
         data = data[data['total_conflict'] > 0]
 
     # Remove all years after fit_year, authors define a sample variable in code
-    data = data[(data['year'] <= fit_year) & (data['year'] >= 1992)]
+    data = data[data['year'] <= fit_year]
+    data = data[['countryid', 'year'] + regressors]
+    data['year'] = data['year'] - data['year'].min() + 1
+    max_year = int(data['year'].max())
+    data['year'] = data['year'].apply(lambda x: 'Year' + str(int(x)))
+    data = data.pivot(index='countryid', columns='year')[regressors]
+    data.columns = [col[1] + "_" + col[0]
+                    for col in data.columns.values]
 
-    return(data)
+    for i in range(1, max_year):
+        for col in regressors:
+            diff_col = 'Diff' + "_" + str(i + 1) + "_" + str(i) + "_" + col
+            col1 = 'Year' + str(i + 1) + "_" + col
+            col2 = 'Year' + str(i) + "_" + col
+            data[diff_col] = data[col1] - data[col2]
 
-    # data = data.dropna(axis=0)
+    formula = dict()
 
-    z_level = ["Diff" + str(i + 1) + "ste_theta" + str(j)
-               for i in range(1, 2) for j in range(1, 2)]
-    z_level += ["Diff" + str(i + 1) + dep_var for i in range(1, (dep_lags + 1))]
+    for i in range(1, (max_year - 1)):
+        l_dep = 'Year' + str(i + 2) + "_" + dep_var
+        d_dep = 'Diff_' + str(i + 2) + "_" + str(i + 1) + "_" + dep_var
+        l_endog = ['Year' + str(i + 1) + "_" + col for col in regressors]
+        d_endog = ['Diff_' + str(i + 1) + "_" + str(i) +
+                   "_" + col for col in regressors]
+        d_inst = ['Year' + str(j) + "_" + col for col in regressors
+                  for j in range(max(1, i - max_lags), (i + 1))]
+        l_inst = ['Diff_' + str(i + 1) + "_" + str(i) +
+                  "_" + col for col in regressors]
+        formula['level' + str(i)] = l_dep + " ~ [" + \
+            " + ".join(l_endog) + " ~ " + " + ".join(l_inst) + "]"
+        formula['diff' + str(i)] = d_dep + " ~ [" + \
+            " + ".join(d_endog) + " ~ " + " + ".join(d_inst) + "]"
 
-    endog_level = ['Lag1ste_theta' + str(j) for j in range(1, 2)]
-    endog_level += ['Lag1' + dep_var]
+    mod = IVSystemGMM.from_formula(formula, data, weight_type='unadjusted')
 
-    dep_level = dep_var
+    constraints = []
+    params = mod.param_names
+    row = 0
+    used = []
+    for col in params:
+        var = col.split("_")[-1]
+        lst = [i for i in params if (i.split("_")[-1] == var) & (col != i)]
+        for col2 in lst:
+            if col2.split("_")[-1] in used:
+                continue
+            constraints.append([0] * len(params))
+            constraints[row][params.index(col)] = 1
+            constraints[row][params.index(col2)] = -1
+            row += 1
+        used.append(col.split("_")[-1])
 
-    z_diff = ["Lag" + str(i + 1) + "ste_theta" + str(j)
-              for i in range(1, 2) for j in range(1, 2)]
-    z_diff += ["Lag" + str(i + 1) + dep_var for i in range(1, (dep_lags + 1))]
+    constraints = pd.DataFrame(constraints)
 
-    endog_diff = ['Diff2ste_theta' + str(j) for j in range(1, 2)]
-    endog_diff += ['Diff2' + dep_var]
+    mod.add_constraints(r=constraints)
+    fit = mod.fit(cov_type='robust', iter_limit=1000)
 
-    dep_diff = 'Diff1' + dep_var
-
-    formula = dict(
-        level={'dependent': data[dep_level],
-               'endog': data[endog_level], 'instruments': data[z_level]},
-
-        diff={'dependent': data[dep_diff],
-              'endog': data[endog_diff], 'instruments': data[z_diff]})
-
-    system_gmm = IVSystemGMM(formula, weight_type='robust')
-
-    # system_gmm_res = system_gmm.fit(cov_type="robust")
-
-    return(system_gmm)
+    return(fit)
 
 
 print("=======================================================================")
@@ -1066,64 +1063,29 @@ print("Finished Running Code in Section 4")
 print("=======================================================================")
 
 model_params = {
-    "fit_year": 1995,  # Year for fitting the model
+    "fit_year": 2013,  # Year for fitting the model
     "dep_var": "bdbest25",  # Civil War (1000) or Armed Conflict (25)
     "onset": True,  # Onset of Incidence of Conflict
     "all_indiv": True,  # Include all countries or not
     "FE": False,  # Pooled Model or Fixed Effects
     'interactions': None,  # Set of interaction vars (can be None)
-    'dep_lags': 1
+    'max_lags': 3,  # Set max lags for instrumental variables
+    'lagged_regs': True  # Define whether to use lagged labels
 }
 
-test = gmm(master, model_params)
-dep_var = 'bdbest25'
-cols = ['ste_theta1']
-test = test[['countryid', 'year', dep_var] + cols]
-test['year'] = test['year'] - test['year'].min() + 1
-max_year = int(test['year'].max())
-test['year'] = test['year'].apply(lambda x: 'Year' + str(int(x)))
-test = test.pivot(index='countryid', columns='year')[['bdbest25', 'ste_theta1']]
-test.columns = [col[1] + "*" + col[0]
-                for col in test.columns.values]
+gmm_dict = OrderedDict()
+gmm_dict['GMM'] = blundell_bond(master, model_params)
 
+gmm_file = currDir + "/Report/GMMArmed.tex"
+out_latex(gmm_dict, all_labs, model_params, gmm_file, "custom")
 
-for i in range(1, max_year):
-    for col in [dep_var] + cols:
-        diff_col = 'Diff' + "*" + str(i + 1) + "*" + str(i) + "*" + col
-        col1 = 'Year' + str(i + 1) + "*" + col
-        col2 = 'Year' + str(i) + "*" + col
-        test[diff_col] = test[col1] - test[col2]
+gmm_dict = OrderedDict()
+model_params['dep_var'] = 'bdbest1000'
+gmm_dict['GMM'] = blundell_bond(master, model_params)
 
-
-formula = dict()
-
-for i in range(1, (max_year - 1)):
-    l_dep = 'Year' + str(i + 2) + "*" + dep_var
-    d_dep = 'Diff*' + str(i + 2) + '*' + str(i + 1) + '*' + dep_var
-    l_endog = ['Year' + str(i + 1) + '*' + col for col in cols + [dep_var]]
-    d_endog = ['Diff*' + str(i + 1) + "*" + str(i) +
-               "*" + col for col in cols + [dep_var]]
-    d_inst = ['Year' + str(i) + "*" + col for col in cols + [dep_var]]
-    l_inst = d_endog
-    formula['level' + str(i)] = {'dependent': test[l_dep],
-                                 'endog': test[l_endog], 'instruments': test[l_inst]}
-    formula['diff' + str(i)] = {'dependent': test[d_dep],
-                                'endog': test[d_endog], 'instruments': test[d_inst]}
-
-
-mod = IVSystemGMM(formula, weight_type='robust')
-constraints = []
-for col in mod.param_names:
-    var = col.split("*")[-1]
-    for col2 in [i for i in mod.param_names if i.split("*")[-1] == var]:
-
-mod.add_constraints(r=pd.DataFrame(
-    [[1, -1, 0, 0], [0, 0, 1, -1], [0, 1, -1, 0]]))
-fit = mod.fit()
-print(fit.summary)
-
+gmm_file = currDir + "/Report/GMMCivil.tex"
+out_latex(gmm_dict, all_labs, model_params, gmm_file, "custom")
 
 ################################################################################
 #########################>>>>>>>END SECTION 6<<<<<<<<<##########################
 ################################################################################
-#
