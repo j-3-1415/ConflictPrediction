@@ -167,7 +167,8 @@ labs = {'year': 'Article Year', 'theta_year': 'Topic Year',
         'theta12': 'Topic 13 Share', 'theta13': 'Topic 14 Share',
         'theta14': 'Topic 15 Share', 'bdbest1000': "Civil War",
         'bdbest25': "Armed Conflict", "autoc": "Autocracy",
-        "democ": 'Democracy', 'const': 'Constant'}
+        "democ": 'Democracy', 'const': 'Constant',
+        'childmortality': 'Child Mortality', 'gdp_g': 'GDP'}
 
 print("=======================================================================")
 print("Finished Running Code in Section 1")
@@ -190,7 +191,7 @@ print("=======================================================================")
 
 # get an overview of available data for controls
 complete_file = FileRead("CompleteMain")
-for col in complete_file.columns:
+for col in sorted(complete_file.columns):
     print(col)
 
 # specify range of years you want to use
@@ -200,7 +201,7 @@ theta_years = list(range(1995, 2015))
 own = ['region_o', 'subregion_o', 'discrimshare']
 
 # Include the desired interaction variables to be include in master dataframe
-interactions = ['autoc']
+interactions = ['autoc', 'democ', 'childmortality', 'gdp_g']
 own.extend(interactions)
 
 labs.update({"theta" + str(i) + "_BY_" + inter:
@@ -795,8 +796,8 @@ model_params = {
     "dep_var": "bdbest25",  # Civil War (1000) or Armed Conflict (25)
     "onset": True,  # Onset of Incidence of Conflict
     "all_indiv": True,  # Include all countries or not
-    "FE": False,  # Pooled Model or Fixed Effects
-    'interactions': None,  # Set of interaction vars (can be None)
+    "FE": True,  # Pooled Model or Fixed Effects
+    'interactions': ['childmortality'],  # Set of interaction vars (can be None)
     'dep_lags': 1,  # Number of lags in gmm
     'lagged_regs': False  # Whether blundell-bond is being used
 }
@@ -1072,10 +1073,10 @@ model_params = {
     "onset": True,  # Onset of Incidence of Conflict
     "all_indiv": True,  # Include all countries or not
     "FE": False,  # Pooled Model or Fixed Effects
-    'interactions': None,  # Set of interaction vars (can be None)
-    'max_lags': 3,  # Set max lags for instrumental variables
+    'interactions': ['childmortality'],  # Set of interaction vars (can be None)
+    'max_lags': 1,  # Set max lags for instrumental variables
     'lagged_regs': True,  # Define whether to use lagged labels
-    'iterations': 5,  # How many iterations for system gmm
+    'iterations': 2,  # How many iterations for system gmm
     'topic_cols': ['theta' + str(i) for i in range(1, 15)],  # theta cols
     'weight_type': 'unadjusted'  # Type of gmm weighting matrix
 }
