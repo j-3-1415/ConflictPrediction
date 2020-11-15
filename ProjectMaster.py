@@ -17,7 +17,7 @@ import statsmodels.api as sm
 from itertools import product
 from linearmodels.panel import PanelOLS, compare
 from linearmodels.panel import PooledOLS, BetweenOLS, RandomEffects
-from linearmodels import IVSystemGMM
+from linearmodels import IVSystemGMM, IV3SLS
 import re
 import os
 import matplotlib.pyplot as plt
@@ -680,9 +680,8 @@ def pred_model(data, model, params):
 
     return(preds)
 
+
 # Define function to output latex regression table
-
-
 def out_latex(models, labs, model_params, file, type):
 
     ############################################################################
@@ -958,6 +957,10 @@ def blundell_bond(data, params):
 
     max_lags = params['max_lags'] - 1
 
+    weight_type = params['weight_type']
+
+    iters = params['iterations']
+
     # The order of null filling and removal is done according to the authors
     #       code, changing the order changes the result
     ############################################################################
@@ -968,7 +971,7 @@ def blundell_bond(data, params):
     data = data[data['theta_year'] == (fit_year + 1)]
 
     # Define the column names of thetas to be used as regressors
-    thetas = ["theta" + str(i) for i in range(1, 15)]
+    thetas = params['topic_cols']
 
     # Forward fill by group all the null values in the regressors
     data[thetas] = data.groupby('countryid')[thetas].ffill()
@@ -1005,6 +1008,7 @@ def blundell_bond(data, params):
     max_year = int(data['year'].max())
     data['year'] = data['year'].apply(lambda x: 'Year' + str(int(x)))
     data = data.pivot(index='countryid', columns='year')[regressors]
+
     data.columns = [col[1] + "_" + col[0]
                     for col in data.columns.values]
 
@@ -1032,7 +1036,7 @@ def blundell_bond(data, params):
         formula['diff' + str(i)] = d_dep + " ~ [" + \
             " + ".join(d_endog) + " ~ " + " + ".join(d_inst) + "]"
 
-    mod = IVSystemGMM.from_formula(formula, data, weight_type='unadjusted')
+    mod = IVSystemGMM.from_formula(formula, data, weight_type=weight_type)
 
     constraints = []
     params = mod.param_names
@@ -1053,7 +1057,7 @@ def blundell_bond(data, params):
     constraints = pd.DataFrame(constraints)
 
     mod.add_constraints(r=constraints)
-    fit = mod.fit(cov_type='robust', iter_limit=1000)
+    fit = mod.fit(cov_type='robust', iter_limit=iters)
 
     return(fit)
 
@@ -1070,8 +1074,13 @@ model_params = {
     "FE": False,  # Pooled Model or Fixed Effects
     'interactions': None,  # Set of interaction vars (can be None)
     'max_lags': 3,  # Set max lags for instrumental variables
-    'lagged_regs': True  # Define whether to use lagged labels
+    'lagged_regs': True,  # Define whether to use lagged labels
+    'iterations': 5,  # How many iterations for system gmm
+    'topic_cols': ['theta' + str(i) for i in range(1, 15)],  # theta cols
+    'weight_type': 'unadjusted'  # Type of gmm weighting matrix
 }
+
+test = blundell_bond(master, model_params)
 
 gmm_dict = OrderedDict()
 gmm_dict['GMM'] = blundell_bond(master, model_params)
