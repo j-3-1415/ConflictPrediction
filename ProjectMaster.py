@@ -1081,7 +1081,7 @@ model_params = {
     'weight_type': 'unadjusted'  # Type of gmm weighting matrix
 }
 
-test = blundell_bond(master, model_params)
+test = blundell_bond(master, model_params) #Running blundell-bond
 
 gmm_dict = OrderedDict()
 gmm_dict['GMM'] = blundell_bond(master, model_params)
