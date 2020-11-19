@@ -14,7 +14,7 @@ global local  # Define global variable of input for file source
 global FileDict  # Define global variable for file importation
 
 currDir = os.getcwd()  # Define current directory based on python script
-# currDir = '/Users/jacobpichelmann/Dropbox/PanelData2020/mastercode'
+# currDir = '/Users/JPichelmann/Dropbox/PanelData2020/mastercode'
 
 # Get user input whether files should be imported locally or from Dropbox
 local = input("""Import data Locally? 'True' or 'False':

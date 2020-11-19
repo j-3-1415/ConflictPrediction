@@ -146,6 +146,10 @@ def blundell_bond(data, params):
 
     max_lags = params['max_lags'] - 1
 
+    weight_type = params['weight_type']
+
+    iters = params['iterations']
+
     # The order of null filling and removal is done according to the authors
     #       code, changing the order changes the result
     ############################################################################
@@ -156,7 +160,7 @@ def blundell_bond(data, params):
     data = data[data['theta_year'] == (fit_year + 1)]
 
     # Define the column names of thetas to be used as regressors
-    thetas = ["theta" + str(i) for i in range(1, 15)]
+    thetas = params['topic_cols']
 
     # Forward fill by group all the null values in the regressors
     data[thetas] = data.groupby('countryid')[thetas].ffill()
@@ -166,6 +170,10 @@ def blundell_bond(data, params):
     # If the interaction list is not empty, add the interactions
     if interactions is not None:
         for interact in interactions:
+            data[interact] = data.groupby(
+                'countryid')[interact].fillna(method='backfill')
+            data[interact] = data.groupby(
+                'countryid')[interact].fillna(method='ffill')
             cols = [x + "BY" + interact for x in thetas]
             data[cols] = data[thetas].multiply(data[interact], axis='index')
             regressors.extend(cols)
@@ -193,6 +201,7 @@ def blundell_bond(data, params):
     max_year = int(data['year'].max())
     data['year'] = data['year'].apply(lambda x: 'Year' + str(int(x)))
     data = data.pivot(index='countryid', columns='year')[regressors]
+
     data.columns = [col[1] + "_" + col[0]
                     for col in data.columns.values]
 
@@ -220,7 +229,7 @@ def blundell_bond(data, params):
         formula['diff' + str(i)] = d_dep + " ~ [" + \
             " + ".join(d_endog) + " ~ " + " + ".join(d_inst) + "]"
 
-    mod = IVSystemGMM.from_formula(formula, data, weight_type='unadjusted')
+    mod = IVSystemGMM.from_formula(formula, data, weight_type=weight_type)
 
     constraints = []
     params = mod.param_names
@@ -241,7 +250,7 @@ def blundell_bond(data, params):
     constraints = pd.DataFrame(constraints)
 
     mod.add_constraints(r=constraints)
-    fit = mod.fit(cov_type='robust', iter_limit=1000)
+    fit = mod.fit(cov_type='robust', iter_limit=iters)
 
     return(fit)
 

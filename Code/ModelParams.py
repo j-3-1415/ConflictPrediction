@@ -33,43 +33,51 @@ fe_bdbest25 = {
 }
 
 # pooled with interaction bdbest25
-pooled_bdbest25_child = pooled_bdbest25
+pooled_bdbest25_child = pooled_bdbest25.copy()
 pooled_bdbest25_child['interactions'] = interactions  # everything but interactions is the same
 
 # fixed effects with interaction bdbest25
-fe_bdbest25_child = fe_bdbest25
+fe_bdbest25_child = fe_bdbest25.copy()
 fe_bdbest25_child['interactions'] = interactions  # everything but interactions is the same
 
 # baseline pooled bdbest1000
-pooled_bdbest1000 = pooled_bdbest25
+pooled_bdbest1000 = pooled_bdbest25.copy()
 pooled_bdbest1000['dep_var'] = 'bdbest1000'  # everything but dep var is the same
 
 # baseline fixed effects bdbest1000
-fe_bdbest1000 = fe_bdbest25
+fe_bdbest1000 = fe_bdbest25.copy()
 fe_bdbest1000['dep_var'] = 'bdbest1000'  # everything but dep var is the same
 
 # pooled with interaction bdbest1000
-pooled_bdbest1000_child = pooled_bdbest25_child
+pooled_bdbest1000_child = pooled_bdbest25_child.copy()
 pooled_bdbest1000_child['dep_var'] = 'bdbest1000'  # everything but dep var is the same
 
 # fixed effects with interaction bdbest 1000
-fe_bdbest1000_child = fe_bdbest25_child
+fe_bdbest1000_child = fe_bdbest25_child.copy()
 fe_bdbest1000_child['dep_var'] = 'bdbest1000'  # everything but dep var is the same
 
 
 # baseline blundell bond bdbest25
-bb_params_bdbest25 = {
+bb_bdbest25 = {
     "fit_year": 2013,  # Year for fitting the model
     "dep_var": "bdbest25",  # Civil War (1000) or Armed Conflict (25)
     "onset": True,  # Onset of Incidence of Conflict
     "all_indiv": True,  # Include all countries or not
     "FE": False,  # Pooled Model or Fixed Effects
-    'interactions': None,  # Set of interaction vars (can be None)
-    'max_lags': 3,  # Set max lags for instrumental variables
-    'lagged_regs': True  # Define whether to use lagged labels
+    'interactions': ['childmortality'],  # Set of interaction vars (can be None)
+    'max_lags': 1,  # Set max lags for instrumental variables
+    'lagged_regs': True,  # Define whether to use lagged labels
+    'iterations': 2,  # How many iterations for system gmm
+    'topic_cols': ['theta' + str(i) for i in range(1, 15)],  # theta cols
+    'weight_type': 'unadjusted'  # Type of gmm weighting matrix
 }
 
+# blundell bond with interaction bdbest 1000
+bb_bdbest25_child = bb_bdbest25.copy()
+bb_bdbest25_child['interactions'] = [interactions[0]]
+
+
 # baseline blundell bond bdbest1000
-bb_params_bdbest1000 = bb_params_bdbest25
-bb_params_bdbest1000['dep_var'] = 'bdbest1000'  # everything but dep var is the same
+bb_bdbest1000 = bb_bdbest25.copy()
+bb_bdbest1000['dep_var'] = 'bdbest1000'  # everything but dep var is the same
 
