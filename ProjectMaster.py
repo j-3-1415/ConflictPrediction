@@ -982,6 +982,10 @@ def blundell_bond(data, params):
     # If the interaction list is not empty, add the interactions
     if interactions is not None:
         for interact in interactions:
+            data[interact] = data.groupby(
+                'countryid')[interact].fillna(method='backfill')
+            data[interact] = data.groupby(
+                'countryid')[interact].fillna(method='ffill')
             cols = [x + "BY" + interact for x in thetas]
             data[cols] = data[thetas].multiply(data[interact], axis='index')
             regressors.extend(cols)
@@ -1081,7 +1085,7 @@ model_params = {
     'weight_type': 'unadjusted'  # Type of gmm weighting matrix
 }
 
-test = blundell_bond(master, model_params) #Running blundell-bond
+test = blundell_bond(master, model_params)  # Running blundell-bond
 
 gmm_dict = OrderedDict()
 gmm_dict['GMM'] = blundell_bond(master, model_params)
