@@ -20,8 +20,10 @@ from linearmodels import IVSystemGMM
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from progressbar import ProgressBar
 
 # 1a. Fixed Effects model
+
 
 def run_model(data, params):
 
@@ -58,10 +60,10 @@ def run_model(data, params):
     # Make a regression summary text file with each run
 
     data = data.copy(deep=True)  # Make a copy so dataframe not overwritten
-    data = data[data['theta_year'] == (fit_year + 1)]
+    data = data[data['theta_year'] == fit_year]
 
     # Define the column names of thetas to be used as regressors
-    thetas = ["theta" + str(i) for i in range(1, 15)]
+    thetas = params['topic_cols']
 
     # One before here means you are in t (one before the next period)
     data['one_before'] = data.groupby('countryid')[dep_var].shift(-1)
@@ -131,8 +133,9 @@ def blundell_bond(data, params):
     # Input Notes
     ########################################################################
     # data should be master file
-    # fit year is year t, before prediction year
+    # fit year is year before prediction year
 
+    params = params.copy()
     fit_year = params['fit_year']
 
     dep_var = params['dep_var']  # dep var should be bdbest25 or bdbest1000
@@ -144,7 +147,13 @@ def blundell_bond(data, params):
     # This input diverges from the authors technique, so results will differ
     interactions = params['interactions']
 
+    FD = params['FD']
+
     max_lags = params['max_lags'] - 1
+    if FD:
+        max_lags = max_lags + 1
+
+    start = [1, 2][FD]
 
     weight_type = params['weight_type']
 
@@ -157,10 +166,10 @@ def blundell_bond(data, params):
     ############################################################################
 
     data = data.copy(deep=True)  # Make a copy so dataframe not overwritten
-    data = data[data['theta_year'] == (fit_year + 1)]
+    data = data[data['theta_year'] == fit_year]
 
     # Define the column names of thetas to be used as regressors
-    thetas = params['topic_cols']
+    thetas = params['topic_cols'].copy()
 
     # Forward fill by group all the null values in the regressors
     data[thetas] = data.groupby('countryid')[thetas].ffill()
@@ -207,23 +216,39 @@ def blundell_bond(data, params):
 
     for i in range(1, max_year):
         for col in regressors:
-            diff_col = 'Diff' + "_" + str(i + 1) + "_" + str(i) + "_" + col
             col1 = 'Year' + str(i + 1) + "_" + col
             col2 = 'Year' + str(i) + "_" + col
+            diff_col = 'Diff_' + str(i + 1) + "_" + col
             data[diff_col] = data[col1] - data[col2]
+            if (FD) & (i > 1):
+                col1 = 'Year' + str(i + 1) + "_" + col
+                col2 = 'Year' + str(i) + "_" + col
+                col3 = 'Year' + str(i - 1) + "_" + col
+                diff_col = 'DiffSQ_' + str(i + 1) + "_" + col
+                data[diff_col] = data[col1] - (2 * data[col2]) + data[col3]
 
     formula = dict()
 
-    for i in range(1, (max_year - 1)):
-        l_dep = 'Year' + str(i + 2) + "_" + dep_var
-        d_dep = 'Diff_' + str(i + 2) + "_" + str(i + 1) + "_" + dep_var
-        l_endog = ['Year' + str(i + 1) + "_" + col for col in regressors]
-        d_endog = ['Diff_' + str(i + 1) + "_" + str(i) +
-                   "_" + col for col in regressors]
-        d_inst = ['Year' + str(j) + "_" + col for col in regressors
-                  for j in range(max(1, i - max_lags), (i + 1))]
-        l_inst = ['Diff_' + str(i + 1) + "_" + str(i) +
-                  "_" + col for col in regressors]
+    for i in range(start, (max_year - 1)):
+        l_dep = ['Year' + str(i + 2) + "_" + dep_var,
+                 'Diff_' + str(i + 2) + "_" + dep_var][FD]
+
+        d_dep = ['Diff_' + str(i + 2) + "_" + dep_var,
+                 'DiffSQ_' + str(i + 2) + "_" + dep_var][FD]
+
+        l_endog = [['Year' + str(i + 1) + "_" + col for col in regressors],
+                   ['Diff_' + str(i + 1) + "_" + col for col in regressors]][FD]
+
+        d_endog = [['Diff_' + str(i + 1) + "_" + col for col in regressors],
+                   ['DiffSQ_' + str(i + 1) + "_" + col for col in regressors]][FD]
+
+        d_inst = [['Year' + str(j) + "_" + col for col in regressors
+                   for j in range(max(start, i - max_lags), (i + 1))],
+                  ['Diff_' + str(j) + "_" + col for col in regressors for j in range(max(start, i - max_lags), (i + 1))]][FD]
+
+        l_inst = [['Diff_' + str(i + 1) + "_" + col for col in regressors],
+                  ['DiffSQ_' + str(i + 1) + "_" + col for col in regressors]][FD]
+
         formula['level' + str(i)] = l_dep + " ~ [" + \
             " + ".join(l_endog) + " ~ " + " + ".join(l_inst) + "]"
         formula['diff' + str(i)] = d_dep + " ~ [" + \
@@ -264,135 +289,179 @@ def pred_model(data, model, params):
     ############################################################################
     # data should be master file
     # model input should be an object returned by run_model function
+    params = params.copy()
+    data = data.copy(deep=True)
 
-    # fit year is year t, before prediction year
-    fit_year = params['fit_year']
-
-    include_fixef = params['FE']  # Boolean for including fixed effects alpha
-
-    # Get the list of variables to interact with the theta shares
-    # This input diverges from the authors technique, so results will differ
-    interactions = params['interactions']
+    # Get the columns for the theta regressors
+    thetas = params['topic_cols'].copy()
     ############################################################################
     # Input Notes
     ############################################################################
 
-    # Create a copy to not overwrite the dataframe
-    data = data.copy(deep=True)
-
     # We are making a prediction for t + 1, as in authors code
-    data = data[(data['year'] == (fit_year + 1)) &
-                (data['theta_year'] == (fit_year + 1))]
+    data = data[(data['theta_year'] == params['fit_year'])]
 
     # Get the index of the dataframe, individual by time
     data = data.set_index(['countryid', 'year'])
 
-    # Get the columns for the theta regressors
-    thetas = ["theta" + str(i) for i in range(1, 15)]
-
-    regressors = thetas
+    regressors = thetas.copy()
 
     # If the interaction list is not empty, add the interactions
-    if interactions is not None:
-        for interact in interactions:
-            cols = [x + "X" + interact for x in thetas]
+    if params['interactions'] is not None:
+        for interact in params['interactions']:
+            cols = [x + "BY" + interact for x in thetas]
             data[cols] = data[thetas].multiply(data[interact], axis='index')
             regressors.extend(cols)
 
-    # Add all of the independent regressors to the exog matrix
-    exog = data[regressors]
-    exog = sm.add_constant(exog)
+    if not params['lagged_regs']:
 
-    # Use the model to predict the t + 1 values for the chosen conflict
-    preds = model.predict(exog)
-    preds.reset_index(inplace=True)  # Reset the index
+        # Add all of the independent regressors to the exog matrix
+        exog = data[regressors]
+        exog = sm.add_constant(exog)
+        exog = exog[exog.index.get_level_values(1) == params['fit_year']]
 
-    # Condition for whether to break the predictions down by fixed and within
-    # The authors do this, getting the alpha and within portion of prediction
-    if include_fixef:
-        # Rename the prediction, this in the linear prediction component
-        preds = preds.rename({'predictions': 'within_pred'}, axis=1)
+        # Use the model to predict the t + 1 values for the chosen conflict
+        preds = model.predict(exog)
+        preds.reset_index(inplace=True)  # Reset the index
 
-        # Get the estimated fixed effects (alpha) per country
-        fixef = model.estimated_effects
+        # Condition for whether to break the predictions down by fixed and within
+        # The authors do this, getting the alpha and within portion of prediction
+        if params['FE']:
+            # Rename the prediction, this in the linear prediction component
+            preds = preds.rename({'predictions': 'within_pred'}, axis=1)
 
-        fixef = fixef.reset_index()  # Reset the index
+            # Get the estimated fixed effects (alpha) per country
+            fixef = model.estimated_effects
 
-        # Groupby country to get a single value from the estimated effects
-        fixef = fixef.groupby('countryid',
-                              as_index=False)['estimated_effects'].mean()
+            fixef = fixef.reset_index()  # Reset the index
 
-        # Rename the estimated effects as the fixed effects (alpha)
-        fixef = fixef.rename({'estimated_effects': "FE"}, axis=1)
-        # Remerge the fixed effects back onto the prediction frame
-        preds = preds.merge(fixef, how='left', on='countryid')
+            # Groupby country to get a single value from the estimated effects
+            fixef = fixef.groupby('countryid',
+                                  as_index=False)['estimated_effects'].mean()
 
-        # The overall prediction should be the within and fixed predictions
-        preds['predictions'] = preds['within_pred'] + \
-            np.where(preds['FE'].isnull(), 0, preds['FE'])
+            # Rename the estimated effects as the fixed effects (alpha)
+            fixef = fixef.rename({'estimated_effects': "FE"}, axis=1)
+            # Remerge the fixed effects back onto the prediction frame
+            preds = preds.merge(fixef, how='left', on='countryid')
 
-        # preds = preds.drop('FE', axis = 1)
+            # The overall prediction should be the within and fixed predictions
+            preds['predictions'] = preds['within_pred'] + \
+                np.where(preds['FE'].isnull(), 0, preds['FE'])
+
+    else:
+        if params['interactions'] is not None:
+            for interact in params['interactions']:
+                col = [params['dep_var'] + 'BY' + interact]
+                data[col] = data[params['dep_var']] * data[interact]
+                regressors.append(params['dep_var'] + 'BY' + interact)
+
+        regressors.append(params['dep_var'])
+        exog = data[regressors]
+        if params['FD']:
+            exog = exog.groupby(exog.index.get_level_values(0)).diff(1)
+        exog = exog[exog.index.get_level_values(1) == params['fit_year']]
+
+        indices = list(set([i.split("_")[-1] for i in model.params.index]))
+        num_params = len(indices)
+
+        mapper = dict(zip(indices, model.params[:num_params]))
+        preds = exog.dot(pd.Series(mapper)).reset_index().\
+            rename({0: 'within_pred'}, axis=1)
+        preds['year'] = preds['year'] + 1
 
     return(preds)
 
 # 2b. Return ROC
 
+
 def compute_roc(master, model_params, file):
 
-    dep_var = model_params['dep_var']
+    master = master.copy(deep=True)
+    params = model_params.copy()
 
-    true = master[(master['theta_year'] == master['year']) &
-                  (master['year'] >= 1996)][['countryid', 'year', model_params['dep_var']]]
+    add_overall = (params['FE']) & (not params['lagged_regs'])
+
+    if not params['lagged_regs']:
+        if params['FE']:
+            model_name = 'FE'
+        else:
+            model_name = 'Pooled OLS'
+    else:
+        if not params['FD']:
+            model_name = 'Blundell-Bond'
+        else:
+            model_name = 'Blundell-Bond FD'
+
+    dep_var = params['dep_var']
+
+    true = master[master['theta_year'] == master['year']
+                  ][['countryid', 'year', params['dep_var']]]
+    true = true.set_index(['countryid', 'year'])
+
+    if params['FD']:
+        true = true.groupby(true.index.get_level_values(0)).diff(1)
+
+    true = true[true.index.get_level_values(1) >= 1996.0]
 
     pred_dfs = []
 
-    merge_cols = ['countryid', 'year', 'predictions']
-    if model_params['FE']:
-        merge_cols.append('within_pred')
+    merge_cols = ['countryid', 'year', 'within_pred']
+    if add_overall:
+        merge_cols.append('predictions')
 
-    for fit_year in range(1995, 2013):
+    pbar = ProgressBar()
 
-        model_params['fit_year'] = fit_year
+    for fit_year in pbar(range(2011, 2013)):
 
-        model = run_model(master, model_params)
+        params['fit_year'] = fit_year
 
-        preds = pred_model(master, model, model_params)
+        if not params['lagged_regs']:
+            model = run_model(master, params)
+        else:
+            model = blundell_bond(master, params)
+
+        preds = pred_model(master, model, params)
 
         pred_dfs.append(preds[merge_cols])
 
-    preds = pd.concat(pred_dfs)
+    preds = pd.concat(pred_dfs).set_index(['countryid', 'year'])
 
-    true = true.merge(preds, how='left', on=['countryid', 'year'])
+    true = true.merge(preds, how='inner', left_index=True, right_index=True)
 
     true = true.dropna(axis=0)
 
-    overall = roc_curve(true[dep_var], true['predictions'])
     within = roc_curve(true[dep_var], true['within_pred'])
-
-    overall_auc = roc_auc_score(true[dep_var], true['predictions'])
     within_auc = roc_auc_score(true[dep_var], true['within_pred'])
 
     fig, ax = plt.subplots(nrows=1, ncols=1)
 
-    plt.plot(overall[0], overall[1], 'b',
-             color='black', label='Overall Prediciton')
     plt.plot(within[0], within[1], 'b', color='blue',
              linestyle='dashed', label='Within Prediction')
+    plt.text(0.02, 0.0, r'Within AUC = ' +
+             str(round(within_auc, 2)), fontsize=10)
 
     ax.set_xlabel("False Positive Rate")
     ax.set_ylabel("True Positive Rate")
     plt.legend(loc='lower right')
-    fig.suptitle("ROC Curve: " + ['Incidence', 'Onset'][model_params['onset']] +
-                 " of " + all_labs['Labs'][model_params['dep_var']])
 
-    plt.text(0.02, 0.07, r'Overall AUC = ' +
-             str(round(overall_auc, 2)), fontsize=10)
-    plt.text(0.02, 0.0, r'Within AUC = ' +
-             str(round(within_auc, 2)), fontsize=10)
+    fig.suptitle("ROC Curve: " + model_name + ' of ' +
+                 all_labs['Labs'][params['dep_var']])
+
+    if add_overall:
+
+        overall = roc_curve(true[dep_var], true['predictions'])
+        overall_auc = roc_auc_score(true[dep_var], true['predictions'])
+
+        plt.plot(overall[0], overall[1], 'b',
+                 color='black', label='Overall Prediciton')
+
+        plt.text(0.02, 0.07, r'Overall AUC = ' +
+                 str(round(overall_auc, 2)), fontsize=10)
 
     fig.savefig(file)
 
 # 3. Function to output latex regression table
+
 
 def out_latex(models, labs, model_params, file, type):
 
