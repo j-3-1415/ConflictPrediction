@@ -4,12 +4,13 @@
 ##########################################################################
 
 # import data and functions
+# import libraries
+from collections import OrderedDict
 from Code.DataPrep import *
 from Code.ModelFunc import *
 from Code.ModelParams import *
-
-# import libraries
-from collections import OrderedDict
+import warnings
+warnings.filterwarnings('ignore')
 
 # we use ordered dicts to store estimation results
 res_dict = OrderedDict()
@@ -60,7 +61,12 @@ gmm_dict['GMM'] = blundell_bond(master, bb_bdbest1000)
 gmm_file = currDir + "/Report/GMM_civil.tex"
 out_latex(gmm_dict, all_labs, bb_bdbest1000, gmm_file, "custom")
 
-
-# Export exemplary ROC for baseline fe bdbest 26
+# Export exemplary ROC for baseline fe bdbest 25
 file = currDir + "/Report/ROC_FE.png"
 compute_roc(master, fe_bdbest25, file)
+
+file = currDir + '/Report/ROC_BB.png'
+compute_roc(master, bb_bdbest25, file)
+
+file = currDir + '/Report/ROC_BB_FD.png'
+compute_roc(master, bb_bdbest25_FD, file)
