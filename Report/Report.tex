@@ -1,3 +1,5 @@
+\usepackage{amsfonts}
+
 %----------------------------------------------------------------------------------------
 %	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %----------------------------------------------------------------------------------------
@@ -68,10 +70,11 @@ Their main argument is structured as follows: Conventional conflict forecasting 
 \section{Sample \& Data}
 The key pillar of this analysis is the news data used to explain and predict conflict.
 The authors use an unsupervised learning algorithm to distill topic shares out of a set of 700.000 newspaper articles from three internationally-reporting newspapers between 1975 and 2015: the Economist\footnote{174.450 articles from 1975 onward}, the New York Times\footnote{363.275 articles from 1980 onward} and the Washington Post\footnote{185.523 articles from 1977 onward}.
-They start by processing the articles' contents by standard text mining techniques such as stemming words.\footnote{Stemming refers to the process of finding the common root of a word, i.e. “running”, “ran”, and “run” all become “run”.}
+They start by processing the articles' contents with standard text mining techniques such as stemming words.\footnote{Stemming refers to the process of finding the common root of a word, i.e. “running”, “ran”, and “run” all become “run”.}
 This leaves them with roughly 0.9 million tokens, which are then grouped into topics based on the latent Dirichlet allocation (LDA) method.
-A topic is then a probability distribution over words.
-The result is intuitive, as one can imagine that an article covering "Sports" might indeed be more likely to contain words such as "score", "win", "match".
+A topic then constitutes a probability distribution over words.
+The result is intuitive, as one can imagine that an article covering "Sports" might indeed be more likely to contain words such as "score", "win" and "match" whereas an article concerned with "Conflict" could contain the phrases "war", "protest" and "military".
+An indication of the resulting topic compositions is given by figure \ref{}.
 The number of topics has to be specified beforehand, while the composition of topics is defined by the algorithm.
 The authors choose to work with a final set of 15 topics.
 Notably, each topic is a probability distribution over thousands of words, meaning the resulting topics have a certain level of depth that might increase their explanatory power, although being hard to intuitively assess.
@@ -134,19 +137,25 @@ They use a fixed effects model, and we show this compared to both a Pooled OLS m
 We also replicated the ROC curve, comparing the false positive prediction rate to the true positive predictoin rate, in Figure \ref{rocfe}.
 As the authors found in their research, the predictive quality of the estimation drops when excluding the between variation from the prediction.
 
-\section{Improving the model}
+\section{Enhancing the model}
 We extend the authors' analysis by further exploiting their data to build a more holistic model.
 We argue that the topic shares can serve as proxies for the true drivers of conflict: high dimensional, non-measurable events.
 As seen in figure \ref{path} events affect both current and future conflicts as well as topics (i.e. reporting on said events).
-We exploit these relationships to estimate a Blundell Bond model\footnote{We refrain from employing an Arellano Bond model since we expect the lagged value of conflict to have a strong impact on current conflict (i.e. the coefficient to be close to 1) in which case Arellano Bond does not perform well.} that can mitigate the most prominent tradeoff estimating conflict: the question of causality versus predictability.
-By including the lagged value of conflict we can incorporate static factors that tend to perform well in explaining \texit{why} conflict takes place.
-Additionally, by regressing on lagged topic shares, the model captures dynamic behavior stemming from events that cause conflict.
-This model can be written as
+We exploit these relationships to estimate a Blundell Bond model\footnote{We refrain from employing an Arellano Bond model since we expect the lagged value of conflict to have a strong impact on current conflict (i.e. the coefficient to be close to 1) in which case Arellano Bond does not perform well.} that can mitigate the most prominent trade-off when estimating conflict: the question of causality versus predictability.
+By including the lagged value of conflict we can incorporate static factors that tend to perform well in explaining \textit{why} conflict takes place.
+By regressing on lagged topic shares the model captures dynamic behavior stemming from events that \textit{cause} conflict.
+The resulting model can be written as
+
+\begin{equation}
+    y_{it} = \alpha_i + \gamma y_{i, t-1} + \mathbf{\beta}\mathbf{\theta}_{i, t-1} + \varepsilon_{it}
+\end{equation}
+
+where all topic shares $\mathbf{\theta}$ are taken to be weakly exogenous.
 
 \section{Accounting for country differences in reporting}
 It is reasonable to assume that the effect of topic shares is heterogeneous across countries.
 We make the assumption that the heterogeneity of the effect depends on the country's state of development.
-This allows us to mitigate the issue by interacting topic shares with variables capturing each country's degree of development, such as child mortality and ...
+This allows us to mitigate this issue by interacting topic shares with variables capturing each country's degree of development, such as child mortality and ...
 
 \section{Limitations of this approach}
 Naturally, this approach has its limitations that have to be kept in mind when evaluating the resulting estimates.
