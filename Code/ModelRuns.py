@@ -50,6 +50,10 @@ gmm_dict['GMM'] = blundell_bond(master, bb_bdbest25)
 gmm_file = currDir + "/Report/GMM_armed.tex"
 out_latex(gmm_dict, all_labs, bb_bdbest25, gmm_file, "custom")
 
+gmm_fd_file = currDir + "/Report/GMM_FD_armed.tex"
+gmm_dict['GMM_FD'] = blundell_bond(master, bb_bdbest25_FD)
+out_latex(gmm_dict, all_labs, bb_bdbest25_FD, gmm_fd_file, "custom")
+
 # 6. Run: Blundell bond bdbest25 child
 gmm_dict = OrderedDict()
 gmm_dict['GMM'] = blundell_bond(master, bb_bdbest25_child)
@@ -62,11 +66,9 @@ gmm_file = currDir + "/Report/GMM_civil.tex"
 out_latex(gmm_dict, all_labs, bb_bdbest1000, gmm_file, "custom")
 
 # Export exemplary ROC for baseline fe bdbest 25
+fe_bdbest25['onset'] = False
 file = currDir + "/Report/ROC_FE.png"
 compute_roc(master, fe_bdbest25, file)
 
 file = currDir + '/Report/ROC_BB.png'
 compute_roc(master, bb_bdbest25, file)
-
-file = currDir + '/Report/ROC_BB_FD.png'
-compute_roc(master, bb_bdbest25_FD, file)
