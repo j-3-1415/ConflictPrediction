@@ -20,7 +20,7 @@ from linearmodels import IVSystemGMM
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from progressbar import ProgressBar
+from tqdm.auto import tqdm
 
 # 1a. Fixed Effects model
 
@@ -87,7 +87,7 @@ def run_model(data, params):
     if onset:  # Condition for which instances of the dependent variable to remove
         data = data[data[dep_var] != 1]  # Don't want repetition of conflict
     else:
-        data = data[~data[dep_var].isnull()]
+        data = data[data[dep_var] != 0]
 
     # Only take data where tokens are non-zero and non-null
     data = data[(data['tokens'] > 0) & (~data['tokens'].isnull())]
@@ -150,8 +150,6 @@ def blundell_bond(data, params):
     FD = params['FD']
 
     max_lags = params['max_lags'] - 1
-    if FD:
-        max_lags = max_lags + 1
 
     start = [1, 2][FD]
 
@@ -167,6 +165,10 @@ def blundell_bond(data, params):
 
     data = data.copy(deep=True)  # Make a copy so dataframe not overwritten
     data = data[data['theta_year'] == fit_year]
+    data = data.sort_values(by=['countryid', 'year'])
+    if FD:
+        data['dep_var'] = data.groupby('countryid')['dep_var'].shift(1)
+        data['dep_var'] = np.where(data['dep_var'] == -1, 0, data['dep_var'])
 
     # Define the column names of thetas to be used as regressors
     thetas = params['topic_cols'].copy()
@@ -220,34 +222,22 @@ def blundell_bond(data, params):
             col2 = 'Year' + str(i) + "_" + col
             diff_col = 'Diff_' + str(i + 1) + "_" + col
             data[diff_col] = data[col1] - data[col2]
-            if (FD) & (i > 1):
-                col1 = 'Year' + str(i + 1) + "_" + col
-                col2 = 'Year' + str(i) + "_" + col
-                col3 = 'Year' + str(i - 1) + "_" + col
-                diff_col = 'DiffSQ_' + str(i + 1) + "_" + col
-                data[diff_col] = data[col1] - (2 * data[col2]) + data[col3]
 
     formula = dict()
 
     for i in range(start, (max_year - 1)):
-        l_dep = ['Year' + str(i + 2) + "_" + dep_var,
-                 'Diff_' + str(i + 2) + "_" + dep_var][FD]
+        l_dep = 'Year' + str(i + 2) + "_" + dep_var
 
-        d_dep = ['Diff_' + str(i + 2) + "_" + dep_var,
-                 'DiffSQ_' + str(i + 2) + "_" + dep_var][FD]
+        d_dep = 'Diff_' + str(i + 2) + "_" + dep_var
 
-        l_endog = [['Year' + str(i + 1) + "_" + col for col in regressors],
-                   ['Diff_' + str(i + 1) + "_" + col for col in regressors]][FD]
+        l_endog = ['Year' + str(i + 1) + "_" + col for col in regressors]
 
-        d_endog = [['Diff_' + str(i + 1) + "_" + col for col in regressors],
-                   ['DiffSQ_' + str(i + 1) + "_" + col for col in regressors]][FD]
+        d_endog = ['Diff_' + str(i + 1) + "_" + col for col in regressors]
 
-        d_inst = [['Year' + str(j) + "_" + col for col in regressors
-                   for j in range(max(start, i - max_lags), (i + 1))],
-                  ['Diff_' + str(j) + "_" + col for col in regressors for j in range(max(start, i - max_lags), (i + 1))]][FD]
+        d_inst = ['Year' + str(j) + "_" + col for col in regressors
+                  for j in range(max(start, i - max_lags), (i + 1))]
 
-        l_inst = [['Diff_' + str(i + 1) + "_" + col for col in regressors],
-                  ['DiffSQ_' + str(i + 1) + "_" + col for col in regressors]][FD]
+        l_inst = ['Diff_' + str(i + 1) + "_" + col for col in regressors]
 
         formula['level' + str(i)] = l_dep + " ~ [" + \
             " + ".join(l_endog) + " ~ " + " + ".join(l_inst) + "]"
@@ -403,15 +393,15 @@ def compute_roc(master, model_params, file):
 
     true = true[true.index.get_level_values(1) >= 1996.0]
 
-    pred_dfs = []
+    pred_dfs = [None] * len(range(1995, 2014))
 
     merge_cols = ['countryid', 'year', 'within_pred']
     if add_overall:
         merge_cols.append('predictions')
 
-    pbar = ProgressBar()
+    pbar = tqdm(range(1995, 2014), leave=True)
 
-    for fit_year in pbar(range(2011, 2013)):
+    for fit_year in pbar:
 
         params['fit_year'] = fit_year
 
@@ -422,7 +412,7 @@ def compute_roc(master, model_params, file):
 
         preds = pred_model(master, model, params)
 
-        pred_dfs.append(preds[merge_cols])
+        pred_dfs[fit_year - 1995] = preds[merge_cols]
 
     preds = pd.concat(pred_dfs).set_index(['countryid', 'year'])
 
