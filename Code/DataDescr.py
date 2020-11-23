@@ -10,9 +10,11 @@ from Code.DataPrep import *
 import plotly.express as px
 from itertools import product
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sns
 import numpy as np
 import pandas as pd
+import geopandas
 
 ##########################
 # Summary statistics
@@ -20,7 +22,7 @@ import pandas as pd
 
 # Define the summary columns to display in the panel summary
 sum_cols = ['year', 'countryid', 'bdbest25', 'bdbest1000']
-sum_cols.extend([col for col in master.columns if '_theta' in col])
+sum_cols.extend([col for col in master.columns if 'theta' in col])
 
 # Define the topic generation year to use for the summary, currently 2013
 master2013 = master[master['theta_year'] == 2013][sum_cols]
@@ -214,9 +216,9 @@ fig.suptitle('Thetas vs. share of discrimination per year')
 fig.savefig(currDir + str('/Report/thetas_discrim.png'), dpi=100)
 plt.close(fig)
 
-# conflict map to visualize variation in dependent variable
+# interactive conflict map to visualize variation in dependent variable
 master2013_map = master2013.groupby(
-    ['countryid'])['bdbest25'].sum().reset_index()
+    ['countryid'])['bdbest25'].mean().reset_index()
 
 master2013_map = master2013_map.merge(complete_file[['isocode', 'countryid', 'country']].drop_duplicates(subset=['isocode'], keep='first'),
                                       on='countryid', how='left')
@@ -227,6 +229,29 @@ fig = px.choropleth(master2013_map, locations="isocode",
                     color_continuous_scale=px.colors.sequential.Reds)
 
 fig.write_html(currDir + '/Report/conflict_map.html')
+
+# static conflict map to visualize variation in dependent variable
+world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
+world.columns = ['pop_est', 'continent', 'name', 'CODE', 'gdp_md_est', 'geometry']
+conflict_map = pd.merge(world, master2013_map, left_on='CODE', right_on='isocode')
+
+conflict_map['coords'] = conflict_map['geometry'].apply(lambda x: x.representative_point().coords[:])
+conflict_map['coords'] = [coords[0] for coords in conflict_map['coords']]
+
+
+fig, ax = plt.subplots(1, 1)
+divider = make_axes_locatable(ax)
+cax = divider.append_axes("bottom", size="3%", pad=0.1)
+
+conflict_map.plot(column='bdbest25', legend=True, cmap='Reds', legend_kwds={'label': "Percentage of Years in Armed Conflict",
+                                                                            'orientation': "horizontal"},
+                  ax=ax, cax=cax)
+# for idx, row in conflict_map.iterrows():
+#     ax.annotate(s=row['isocode'], xy=row['coords'],
+#                  horizontalalignment='center', size=2)
+ax.set_axis_off()
+plt.savefig(currDir + '/Report/conflict_map.png')
+plt.close()
 
 # Geting regression plots to show the most correlated interactions with
 # Whether a country has ever experienced conflict
