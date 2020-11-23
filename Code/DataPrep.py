@@ -97,14 +97,14 @@ def FileRead(KeyName):
 # Create a dictionary with labels for each column
 labs = {'year': 'Article Year', 'theta_year': 'Topic Year',
         'countryid': 'CountryID', 'pop': 'Country Population',
-        'theta0': 'Topic 1 Share', 'theta1': 'Topic 2 Share',
-        'theta2': 'Topic 3 Share', 'theta3': 'Topic 4 Share',
-        'theta4': 'Topic 5 Share', 'theta5': 'Topic 6 Share',
-        'theta6': 'Topic 7 Share', 'theta7': 'Topic 8 Share',
-        'theta8': 'Topic 9 Share', 'theta9': 'Topic 10 Share',
-        'theta10': 'Topic 11 Share', 'theta11': 'Topic 12 Share',
-        'theta12': 'Topic 13 Share', 'theta13': 'Topic 14 Share',
-        'theta14': 'Topic 15 Share', 'bdbest1000': "Civil War",
+        'theta0': 'Industry', 'theta1': 'CivicLife1',
+        'theta2': 'Asia', 'theta3': 'Sports',
+        'theta4': 'Justice', 'theta5': 'Tourism',
+        'theta6': 'Politics', 'theta7': 'Conflict1',
+        'theta8': 'Business', 'theta9': 'Economics',
+        'theta10': 'InterRelations1', 'theta11': 'InterRelations2',
+        'theta12': 'Conflict3', 'theta13': 'CivicLife2',
+        'theta14': 'Conflict2', 'bdbest1000': "Civil War",
         'bdbest25': "Armed Conflict", 'const': 'Constant'}
 
 # Two main files needed for merge: thetas and complete data including dep var and controls
@@ -121,8 +121,9 @@ theta_years = list(range(1995, 2015))
 own = ['region_o', 'subregion_o', 'discrimshare']
 
 # Include the desired interaction variables to be include in master dataframe
-interactions = ['childmortality', 'democ', 'autoc']
-interactions_names = ['Childmortality', 'Democracy', 'Autocracy']
+interactions = ['childmortality', 'rgdpl', 'democracy', 'avegoodex']
+interactions_names = ['ChildMortality', 'RealGDP',
+                      'DemocracyIndex', 'AveGoodIndex']
 add_labs = dict(zip(interactions, interactions_names))
 
 labs.update(add_labs)  # include them in labels
@@ -159,8 +160,8 @@ for year in theta_years:
     filter_col = []
     filter_col.extend(merge_cols)
     filter_col.extend(covars)
-    complete_file_sub = complete_file.loc[:,
-                                          complete_file.columns.isin(filter_col)]
+    complete_file_sub = complete_file.\
+        loc[:, complete_file.columns.isin(filter_col)]
     # recode dependent variables
 
     # merge thetas with the rest of the data
