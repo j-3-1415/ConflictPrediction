@@ -21,7 +21,7 @@ pooled_bdbest25 = {
     'iterations': 2,  # How many iterations for system gmm
     'topic_cols': ['theta' + str(i) for i in range(1, 15)],  # theta cols
     'weight_type': 'unadjusted',  # Type of gmm weighting matrix
-    'FD': True
+    'FD': False
 }
 
 # baseline fixed effects bdbest25
@@ -37,7 +37,7 @@ fe_bdbest25 = {
     'iterations': 2,  # How many iterations for system gmm
     'topic_cols': ['theta' + str(i) for i in range(1, 15)],  # theta cols
     'weight_type': 'unadjusted',  # Type of gmm weighting matrix
-    'FD': True
+    'FD': False
 }
 
 # pooled with interaction bdbest25
@@ -77,9 +77,9 @@ bb_bdbest25 = {
     "all_indiv": True,  # Include all countries or not
     "FE": False,  # Pooled Model or Fixed Effects
     'interactions': None,  # Set of interaction vars (can be None)
-    'max_lags': 2,  # Set max lags for instrumental variables
+    'max_lags': 3,  # Set max lags for instrumental variables
     'lagged_regs': True,  # Define whether to use lagged labels
-    'iterations': 10,  # How many iterations for system gmm
+    'iterations': 50,  # How many iterations for system gmm
     'topic_cols': ['theta' + str(i) for i in range(1, 15)],  # theta cols
     'weight_type': 'unadjusted',  # Type of gmm weighting matrix
     'FD': False
@@ -88,9 +88,6 @@ bb_bdbest25 = {
 # blundell bond with interaction bdbest 1000
 bb_bdbest25_child = bb_bdbest25.copy()
 bb_bdbest25_child['interactions'] = [interactions[0]]
-
-bb_bdbest25_FD = bb_bdbest25.copy()
-bb_bdbest25_FD['FD'] = True
 
 # baseline blundell bond bdbest1000
 bb_bdbest1000 = bb_bdbest25.copy()
