@@ -27,6 +27,7 @@ master2013 = master[master['theta_year'] == 2013][sum_cols]
 master2013.reset_index(inplace=True)
 master2013.drop('index', axis=1, inplace=True)
 
+
 def xtsum(data, labs, indiv, time):
 
     # Don't need to summarize the index columns
@@ -89,6 +90,7 @@ def xtsum(data, labs, indiv, time):
 ##########################
 # Plots
 ##########################
+
 
 # build data frame that allows for subsequent groupings
 sum_cols = ['year', 'countryid', 'bdbest25', 'bdbest1000']
@@ -226,3 +228,22 @@ fig = px.choropleth(master2013_map, locations="isocode",
 
 fig.write_html(currDir + '/Report/conflict_map.html')
 
+# Geting regression plots to show the most correlated interactions with
+# Whether a country has ever experienced conflict
+
+cols = ['childmortality', 'democracy', 'rgdpl', 'avegoodex']
+
+df = master[master['theta_year'] == 2013]
+df = df.groupby('countryid')[cols].mean().\
+    melt(value_vars=cols, ignore_index=False, var_name='Interaction').\
+    merge(df.groupby('countryid')['bdbest25'].agg(lambda x: np.where(
+        x.sum() == 0, 1, 0)), how='left', left_index=True, right_index=True).\
+    rename({'bdbest25': 'No Conflict'}, axis=1)
+df['Interaction'] = df['Interaction'].map(labs)
+
+g = sns.FacetGrid(df, col='Interaction', sharex=False, sharey=False, col_wrap=2)
+g.map(sns.regplot, 'value', 'No Conflict', truncate=True)
+g.add_legend()
+g.set(ylim=(-0.1, 1.1))
+plt.savefig(currDir + "/Report/InteractionRegressions.png")
+plt.close()
