@@ -4,7 +4,7 @@
 ##########################################################################
 
 # cross import data
-from Code.DataPrep import *
+from DataPrep import *
 
 # import libraries
 import plotly.express as px
@@ -94,7 +94,7 @@ def xtsum(data, labs, indiv, time):
 
 # build data frame that allows for subsequent groupings
 sum_cols = ['year', 'countryid', 'bdbest25', 'bdbest1000']
-sum_cols.extend([col for col in master.columns if '_theta' in col])
+sum_cols.extend([col for col in master.columns if 'theta' in col])
 sum_cols.extend(own)
 
 master_plot = master[master['theta_year'] == 2013][sum_cols]
@@ -134,10 +134,18 @@ master_plot_conflict_long = master_plot_conflict_long.merge(
 master_plot_conflict_long = master_plot_conflict_long[master_plot_conflict_long['region_o'] != '']
 
 
+print("============================================================")
+print("Creating and Saving Total Theta Plot in Report")
+print("============================================================")
+
 # plot joint theta development not distinguishing between countries
 sns.lineplot(data=master_plot_conflict_long, x="year", y="value", hue="variable")
 plt.savefig(currDir + str('/Report/thetas_total.png'))
 plt.close()
+
+print("============================================================")
+print("Creating and Saving Theta per Country Plot in Report")
+print("============================================================")
 
 #  plot thetas for each country individually
 fig, axes = plt.subplots(nrows=15, ncols=6)
@@ -159,6 +167,10 @@ fig.suptitle('Distributions of thetas per country')
 fig.savefig(currDir + str('/Report/thetas_perCountry.png'), dpi=100)
 plt.close(fig)
 
+print("============================================================")
+print("Creating and Saving Theta per Region Plot in Report")
+print("============================================================")
+
 # replicate this exercise for regions
 
 fig, axes = plt.subplots(nrows=3, ncols=2)
@@ -177,6 +189,10 @@ fig.suptitle('Distributions of thetas per region')
 fig.savefig(currDir + str('/Report/thetas_perRegion.png'), dpi=100)
 plt.close(fig)
 
+
+print("============================================================")
+print("Creating and Saving Theta per Sub-Region Plot in Report")
+print("============================================================")
 # replicate this exercise for subregions
 
 fig, axes = plt.subplots(nrows=6, ncols=3)
@@ -195,6 +211,10 @@ fig.suptitle('Distributions of thetas per subregion')
 fig.savefig(currDir + str('/Report/thetas_perSubregion.png'), dpi=100)
 plt.close(fig)
 
+
+print("============================================================")
+print("Creating and Saving Theta vs. DiscrimShare Plot in Report")
+print("============================================================")
 # scatter of % discrimination vs theta, plot for each year
 # no values for 2014
 
@@ -214,6 +234,10 @@ fig.suptitle('Thetas vs. share of discrimination per year')
 fig.savefig(currDir + str('/Report/thetas_discrim.png'), dpi=100)
 plt.close(fig)
 
+print("============================================================")
+print("Creating and Saving Conflict Map HTML in Report")
+print("============================================================")
+
 # conflict map to visualize variation in dependent variable
 master2013_map = master2013.groupby(
     ['countryid'])['bdbest25'].sum().reset_index()
@@ -227,6 +251,10 @@ fig = px.choropleth(master2013_map, locations="isocode",
                     color_continuous_scale=px.colors.sequential.Reds)
 
 fig.write_html(currDir + '/Report/conflict_map.html')
+
+print("============================================================")
+print("Creating and Saving Interaction vs. Conflict Plot in Report")
+print("============================================================")
 
 # Geting regression plots to show the most correlated interactions with
 # Whether a country has ever experienced conflict
