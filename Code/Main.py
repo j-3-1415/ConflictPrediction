@@ -5,7 +5,7 @@
 import os  # Import for directory definitions
 import sys  # Import to make sure scripts can be imported correctly
 import pkgutil as pkg  # Get this library for listing current packages
-import tkinter as tk
+from tkinter import *
 
 global currDir
 
@@ -60,24 +60,24 @@ sections = {}
 class mainWindow(object):
     def __init__(self, master):
         self.master = master
-        self.Selection = {'Run_Regs': tk.BooleanVar(),
-                          'Run_Plots': tk.BooleanVar()}
+        self.Selection = {'Run_Regs': BooleanVar(),
+                          'Run_Plots': BooleanVar()}
         self.b = Checkbutton(master, text='Run Regressions',
                              variable=self.Selection['Run_Regs'])
         self.b.pack(anchor='w')
         self.b2 = Checkbutton(master, text='Run Plots',
                               variable=self.Selection['Run_Plots'])
         self.b2.pack(anchor='w')
-        self.b3 = tk.Button(master, text='Finish Selection',
-                            command=lambda: self.finish()).pack()
+        self.b3 = Button(master, text='Finish Selection',
+                         command=lambda: self.finish()).pack()
 
-        def finish(self):
-            sections['Run_Regs'] = self.Selection['Run_Regs'].get()
-            sections['Run_Plots'] = self.Selection['Run_Plots'].get()
-            self.master.destroy()
+    def finish(self):
+        sections['Run_Regs'] = self.Selection['Run_Regs'].get()
+        sections['Run_Plots'] = self.Selection['Run_Plots'].get()
+        self.master.destroy()
 
 
-root = tk.Tk()
+root = Tk()
 root.geometry("350x75")
 root.title("Select Sections to Run")
 m = mainWindow(root)
