@@ -10,9 +10,6 @@ from DataPrep import *
 from collections import OrderedDict
 from tkinter import *
 
-dirsplit = os.getcwd().split("/")
-currDir = os.path.abspath("/".join(dirsplit[:dirsplit.index('mastercode') + 1]))
-
 # import data and functions
 # import libraries
 warnings.filterwarnings('ignore')
