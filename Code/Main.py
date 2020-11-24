@@ -56,22 +56,25 @@ if missing:
 global sections
 sections = {}
 
+
 class mainWindow(object):
     def __init__(self, master):
         self.master = master
-        self.Selection = {'Run_Regs' : tk.BooleanVar(), 
-        	'Run_Plots' : tk.BooleanVar()}
-		self.b = Checkbutton(master, text='Run Regressions', 
-			variable=self.Selection['Run_Regs']).pack(anchor='w')
-		self.b2 = Checkbutton(master, text='Run Plots', 
-			variable=self.Selection['Run_Plots']).pack(anchor='w')
-		self.b3 = tk.Button(master, text='Finish Selection',
-			command=lambda: self.finish()).pack()
+        self.Selection = {'Run_Regs': tk.BooleanVar(),
+                          'Run_Plots': tk.BooleanVar()}
+        self.b = Checkbutton(master, text='Run Regressions',
+                             variable=self.Selection['Run_Regs'])
+        self.b.pack(anchor='w')
+        self.b2 = Checkbutton(master, text='Run Plots',
+                              variable=self.Selection['Run_Plots'])
+        self.b2.pack(anchor='w')
+        self.b3 = tk.Button(master, text='Finish Selection',
+                            command=lambda: self.finish()).pack()
 
-	def finish(self):
-		sections['Run_Regs'] = self.Selection['Run_Regs'].get()
-		sections['Run_Plots'] = self.Selection['Run_Plots'].get()
-		self.master.destroy()
+        def finish(self):
+            sections['Run_Regs'] = self.Selection['Run_Regs'].get()
+            sections['Run_Plots'] = self.Selection['Run_Plots'].get()
+            self.master.destroy()
 
 
 root = tk.Tk()
@@ -85,11 +88,11 @@ root.mainloop()
 ################################################################################
 
 if sections['Run_Plots']:
-	os.system(python + ' Code/DataDescr.py')
+    os.system(python + ' Code/DataDescr.py')
 
 ################################################################################
 # Use os.system to run the ModelRuns file in the command prompt
 ################################################################################
 
 if sections['Run_Regs']:
-	os.system(python + ' Code/ModelRuns.py')
+    os.system(python + ' Code/ModelRuns.py')
