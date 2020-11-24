@@ -10,7 +10,7 @@
 ##########################################################################
 
 # import data
-from Code.DataPrep import *
+from DataPrep import *
 
 # import libraries
 from sklearn.metrics import roc_curve, roc_auc_score
@@ -22,8 +22,7 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
-# 1a. Fixed Effects model
-
+# 1a. Fixed Effects model or Pooled OLS Model
 
 def run_model(data, params):
 
@@ -63,7 +62,7 @@ def run_model(data, params):
     data = data[data['theta_year'] == fit_year]
 
     # Define the column names of thetas to be used as regressors
-    thetas = params['topic_cols']
+    thetas = params['topic_cols'].copy()
 
     # One before here means you are in t (one before the next period)
     data['one_before'] = data.groupby('countryid')[dep_var].shift(-1)
