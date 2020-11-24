@@ -8,17 +8,34 @@
 # Import libraries
 import os
 import pandas as pd
+from tkinter import *
 
-global currDir  # Define global variable of current directory
+# global currDir  # Define global variable of current directory
 global local  # Define global variable of input for file source
 global FileDict  # Define global variable for file importation
 
-currDir = os.getcwd()  # Define current directory based on python script
+# currDir = os.getcwd()  # Define current directory based on python script
 # currDir = '/Users/JPichelmann/Dropbox/PanelData2020/mastercode'
 
-# Get user input whether files should be imported locally or from Dropbox
-local = input("""Import data Locally? 'True' or 'False':
-    If 'False' Then Comes from Dropbox Online: """)
+local = False
+
+class mainWindow(object):
+    def __init__(self,master):
+        self.master=master
+        self.b=Button(master,text='Download From Local',
+            command=lambda *args: self.set_value(True)).pack()
+        self.b2=Button(master,text='Download From Dropbox',
+            command=lambda *args: self.set_value(False)).pack()
+
+    def set_value(self, value):
+        local = value
+        self.master.destroy()
+
+root=Tk()
+root.geometry("350x75")
+root.title("Download data locally or from Dropbox?")
+m=mainWindow(root)
+root.mainloop()
 
 # Create a dictionary of files paths for dropbox. Used in FileRead function
 FileDict = {
@@ -111,8 +128,6 @@ labs = {'year': 'Article Year', 'theta_year': 'Topic Year',
 
 # get an overview of available data for controls
 complete_file = FileRead("CompleteMain")
-for col in complete_file.columns:
-    print(col)
 
 # specify range of years you want to use
 theta_years = list(range(1995, 2015))
@@ -148,6 +163,10 @@ merge_cols = ['year', 'countryid']
 covars = ['bdbest25', 'bdbest1000', 'pop']
 covars.extend(own)
 
+print("============================================================")
+print("Importing Data and Concatentating into Dataframe")
+print("============================================================")
+
 for year in theta_years:
     # get thetas in the correct shape, i.e. keep only ste + year and countryid
     theta_file = FileRead("Theta_" + str(year))
@@ -180,3 +199,12 @@ master = master[master['year'] > 1974]
 master = master.reset_index().drop('index', axis=1)
 master = master.rename(
     columns={'ste_theta' + str(i): 'theta' + str(i) for i in range(0, 15)})
+
+print(master[master['theta_year'] == 2013].iloc[:, 0:5].head())
+
+print("============================================================")
+print("Finished Importing Data")
+print("============================================================")
+
+
+
