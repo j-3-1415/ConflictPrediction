@@ -63,14 +63,26 @@ Their main argument is structured as follows: Conventional conflict forecasting 
     \item Goldstone et al. (2010): Prediction through political institution dummies, child mortality rates, share of population discriminated against and whether neighboring countries in conflict
     \item Ward et al. (2013): Event database on high-intensity and low-intensity conflict events used for analysis
     \item Chadefaux (2014): Conflict prediction through analysis of keyword count in newspaper text
-\end{itemize}}, that rely on the overall variation in country fixed effect models, exhibit a bias towards predicting conflict onset to where conflict has occurred before. This is partially due to large country fixed effects and slow moving factors like population, ethnic fractionalization, climate, etc. that result in a large between variation. The forecasts are hence dominated by structural time-invariant (or slow moving) factors, neglecting valuable within variation. As a result these models are relatively good at predicting (biasedly) where conflict will happen, but not when it will happen. In order to improve the forecasting of the timing of conflict and generate an unbiased forecast, Mueller \& Rauh (2018) propose to isolate the within from the overall variation and use such to predict the onset of armed conflict and civil war. In order to obtain necessary within variation, they propose using topic modeling on newspaper text to create variables of the average distribution of topic shares observed in a country during a given year.
+\end{itemize}}, that rely on the overall variation in country fixed effect models, exhibit a bias towards predicting conflict onset to where conflict has occurred before.
+This is partially due to large country fixed effects and slow moving factors like population, ethnic fractionalization, climate, etc. that result in a large between variation.
+The forecasts are hence dominated by structural time-invariant (or slow moving) factors, neglecting valuable within variation.
+As a result these models are relatively good at predicting (biasedly) where conflict will happen, but not when it will happen.
+In order to improve the forecasting of the timing of conflict and generate an unbiased forecast, Mueller \& Rauh (2018) propose to isolate the within from the overall variation and use such to predict the onset of armed conflict and civil war.
+In order to obtain necessary within variation, they propose using topic modeling on newspaper text to create variables of the average distribution of topic shares observed in a country during a given year.
+The rest of the paper is structured as follows.
+Section \ref{sec:data} discusses the sample and data used in the analysis.
+Section \ref{} continues by introducing the initial model and highlights the results of replicating the work of ...
+Our extension of the analysis is motivated in section \ref{}.
+The main findings are presented in section \ref{}.
+Finally, section \ref{} outlines the limitations of the estimation framework and concludes.
 
 
 
-\section{Sample \& Data}
+
+\section{Sample \& Data} \label{sec:data}
 The key pillar of this analysis is the news data used to explain and predict conflict.
 The authors use an unsupervised learning algorithm to distill topic shares out of a set of 700.000 newspaper articles from three internationally-reporting newspapers between 1975 and 2015: the Economist\footnote{174.450 articles from 1975 onward}, the New York Times\footnote{363.275 articles from 1980 onward} and the Washington Post\footnote{185.523 articles from 1977 onward}.
-They start by processing the articles' contents with standard text mining techniques such as stemming words.\footnote{Stemming refers to the process of finding the common root of a word, i.e. “running”, “ran”, and “run” all become “run”.}
+They start by processing the articles' contents with standard text mining techniques such as stemming words.\footnote{Stemming refers to the process of finding the common root of a word, i.e. "running", "ran", and "run" all become "run".}
 This leaves them with roughly 0.9 million tokens, which are then grouped into topics based on the latent Dirichlet allocation (LDA) method.
 A topic then constitutes a probability distribution over words.
 The result is intuitive, as one can imagine that an article covering "Sports" might indeed be more likely to contain words such as "score", "win" and "match" whereas an article concerned with "Conflict" could contain the phrases "war", "protest" and "military".
@@ -79,30 +91,39 @@ The number of topics has to be specified beforehand, while the composition of to
 The authors choose to work with a final set of 15 topics.
 Notably, each topic is a probability distribution over thousands of words, meaning the resulting topics have a certain level of depth that might increase their explanatory power, although being hard to intuitively assess.
 
-The dependent variables on the other hand are constructed through battle-related deaths from the Uppsala Conflict Data Program (UCDP/PRIO).
+The dependent variables on the other hand are constructed from counts of battle-related deaths obtained from the Uppsala Conflict Data Program (UCDP/PRIO).
 Following their definition, armed conflict (dep. var. 1) is defined as a contested incompatibility that concerns government and/or territory over which the use of armed force between two parties, of which at least one is the government of a state, has resulted in at least 25 battle-related deaths in one calendar year.
-Civil conflict (dep. var. 2) follows the same definition but requires at least 1.000 battle-related deaths in on calendar year. \\
+Civil conflict (dep. var. 2) follows the same definition but requires at least 1.000 battle-related deaths in one calendar year. \\
 % Talk about variation in data and place map here?
 
-The panel summary statistics for these variables are given in Figure \ref{tab:xtsum}. (Provide futher explanation about the data)
+The panel summary statistics for these variables are given in table \ref{tab:xtsum}.
+Notably, the variation in the dependent variable is not homogeneous across countries.
+In fact, many countries in our sample have not experienced conflict in the years between 1975 and 2015 and are not likely to do so in the upcoming years.
+This lack of variation is visualized in figure \ref{}.
+This poses a challenge in identifying the true coefficients insofar as the estimates are likely to suffer from attenuation bias.
+This issue is discussed in greater detail in section \ref{} and a promising mitigation strategy employing interaction terms is outlined in section \ref{}.
 
-\subsection{Data Preparation for Model} \label{data_prep}
-The authors clean and prepare their data before estimation.
-Some of these techniques we agree with, and others we have some theoretical issues with.
-The pros and cons of their methods will be discussed in further detail after the initial replication section.
+In the initial analysis the authors change the data in multiple ways prior to estimating their model.
 
 \begin{itemize}
-    \item Observations with missing values in the topic shares are filled forward. If $\theta_{it}$ is missing, and $\theta_{it - 1}$ is not missing, then $\theta_{it} <- \theta_{it - 1}.$
-    \item The chosen conflict variable itself is not used as the dependent variable. The authors specifically look at two scenarios, either the onset or the incidence of conflict.
+    \item Observations with missing values in the topic shares are filled forward.
+    If $\theta_{it}$ is missing, and $\theta_{it - 1}$ is not missing, then $\theta_{it} <- \theta_{it - 1}.$
+    \item The chosen conflict variable itself is not used as the dependent variable.
+    The authors specifically look at two scenarios, either the onset or the incidence of conflict.
         \begin{itemize}
             \item Onset of conflict is defined as $Conflict_{t} = 0$ and $Conflict_{t + 1} = 1$. After creating this onset variable, all observations where $Conflict_{t} = 1$ are removed.
             \item Incidence of Conflict is defined as $Conflict_{t} = 1$ and $Conflict_{t + 1} = 1$. After creating this incidence variable, missing conflict observations are removed.
-            \item In our replication, we will narrow our focus to only the onset of conflict as the authors define it.
         \end{itemize}
     \item Observations where the average population over the entire sample is less than 1000, and where population data is missing are removed.
     \item Observations where there are zero words written, or where this data is missing, are removed.
     \item As a robustness check, the authors provide the option to restrict the sample to only countries who have experienced conflict at least once in the entire sample.
 \end{itemize}
+
+It is important to note that their way of constructing the dependent variable \textit{Onset} results in a highly unbalanced panel.
+We argue that this artificial sample has its merits and legitimacy when using it to build a forecasting model but it needs to be acknowledged that the removal of observations is clearly deterministic, resulting in non-randomly missing data.
+Estimating a model on this data will likely results in biased coefficient estimates (see e.g. ... for a discussion).
+In our extension of the analysis we hence refrain from replicating this approach and instead define ... as the dependent variable.
+
 
 \section{Model}
 The aim of the model is to create forecasts for an armed conflict/ civil war outbreak in period $T+1$ at period $T \in \{1995,..., 2013\}$.

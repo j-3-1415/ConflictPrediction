@@ -14,9 +14,6 @@ from tkinter import *
 global local  # Define global variable of input for file source
 global FileDict  # Define global variable for file importation
 
-# currDir = os.getcwd()  # Define current directory based on python script
-# currDir = '/Users/JPichelmann/Dropbox/PanelData2020/mastercode'
-
 local = False
 
 class mainWindow(object):
