@@ -256,8 +256,9 @@ fig = px.choropleth(master2013_map, locations="isocode",
 fig.write_html(currDir + '/Report/conflict_map.html')
 
 print("============================================================")
-print("Creating and Saving Interaction vs. Conflict Plot in Report")
+print("Creating and Saving Static Conflict Map HTML in Report")
 print("============================================================")
+
 # static conflict map to visualize variation in dependent variable
 world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
 world.columns = ['pop_est', 'continent',
@@ -285,6 +286,10 @@ plt.close()
 
 # Geting regression plots to show the most correlated interactions with
 # Whether a country has ever experienced conflict
+
+print("============================================================")
+print("Creating and Saving Interaction vs. Conflict Plot in Report")
+print("============================================================")
 
 cols = ['childmortality', 'democracy', 'rgdpl', 'avegoodex']
 
