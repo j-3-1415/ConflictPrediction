@@ -6,7 +6,7 @@
 # cross import data
 from DataPrep import *
 
-# import libraries
+# import librariesp
 import plotly.express as px
 from itertools import product
 import matplotlib.pyplot as plt
