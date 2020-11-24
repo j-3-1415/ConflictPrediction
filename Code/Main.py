@@ -20,7 +20,15 @@ python = sys.executable
 ################################################################################
 
 dirsplit = os.getcwd().split("/")
-currDir = os.path.abspath("/".join(dirsplit[:dirsplit.index('mastercode') + 1]))
+if 'mastercode' in dirsplit:
+    currDir = os.path.abspath("/".\
+        join(dirsplit[:dirsplit.index('mastercode') + 1]))
+elif dirsplit[-1] == 'PanelData2020':
+    currDir = os.path.abspath("/".join(dirsplit + ['mastercode']))
+else:
+    print("Please change to project directory before running code")
+    sys.exit()
+    
 os.chdir(currDir)
 
 ################################################################################
@@ -88,11 +96,11 @@ root.mainloop()
 ################################################################################
 
 if sections['Run_Plots']:
-    os.system(python + ' Code/DataDescr.py')
+    from DataDescr import *
 
 ################################################################################
 # Use os.system to run the ModelRuns file in the command prompt
 ################################################################################
 
 if sections['Run_Regs']:
-    os.system(python + ' Code/ModelRuns.py')
+    from ModelRuns import *
