@@ -1,6 +1,4 @@
-\usepackage{amsfonts}
-
-%----------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------
 %	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %----------------------------------------------------------------------------------------
 
@@ -209,15 +207,8 @@ This is unlikely to hold in the given context.
     \begin{table}[!h]
         \caption{Initial Panel Models: Armed Conflict}
         \centering
-        \input{OLSArmed}
+        \input{Pooled_armed}
         \label{tab::armed}
-    \end{table}
-
-    \begin{table}[!h]
-        \caption{Initial Panel Models: Civil War}
-        \centering
-        \input{OLSCivil}
-        \label{tab::civil}
     \end{table}
 
     \begin{figure}[!h]
@@ -227,16 +218,16 @@ This is unlikely to hold in the given context.
         \label{rocfe}
     \end{figure}
 
-    \begin{table}[!h]
-        \caption{Blundell-Bond System Models}
-        \begin{minipage}{.5\linewidth}
-          \input{GMMArmed}
-        \end{minipage}%
-        \begin{minipage}{.5\linewidth}
-            \input{GMMCivil}
-        \end{minipage}
-        \label{gmm_mods}
-    \end{table}
+    % \begin{table}[!h]
+    %     \caption{Blundell-Bond System Models}
+    %     \begin{minipage}{.5\linewidth}
+    %       \input{GMMArmed}
+    %     \end{minipage}%
+    %     \begin{minipage}{.5\linewidth}
+    %         \input{GMMCivil}
+    %     \end{minipage}
+    %     \label{gmm_mods}
+    % \end{table}
 
     \clearpage
     \newpage
