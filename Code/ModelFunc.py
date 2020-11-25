@@ -24,6 +24,7 @@ from tqdm.auto import tqdm
 
 # 1a. Fixed Effects model or Pooled OLS Model
 
+
 def run_model(data, params):
 
     ########################################################################
@@ -86,7 +87,7 @@ def run_model(data, params):
     if onset:  # Condition for which instances of the dependent variable to remove
         data = data[data[dep_var] != 1]  # Don't want repetition of conflict
     else:
-        data = data[data[dep_var] != 0]
+        data = data[~data[dep_var].isnull()]
 
     # Only take data where tokens are non-zero and non-null
     data = data[(data['tokens'] > 0) & (~data['tokens'].isnull())]
@@ -146,11 +147,9 @@ def blundell_bond(data, params):
     # This input diverges from the authors technique, so results will differ
     interactions = params['interactions']
 
-    FD = params['FD']
-
     max_lags = params['max_lags'] - 1
 
-    start = [1, 2][FD]
+    start = 1
 
     weight_type = params['weight_type']
 
@@ -165,16 +164,13 @@ def blundell_bond(data, params):
     data = data.copy(deep=True)  # Make a copy so dataframe not overwritten
     data = data[data['theta_year'] == fit_year]
     data = data.sort_values(by=['countryid', 'year'])
-    if FD:
-        data['dep_var'] = data.groupby('countryid')['dep_var'].shift(1)
-        data['dep_var'] = np.where(data['dep_var'] == -1, 0, data['dep_var'])
 
     # Define the column names of thetas to be used as regressors
     thetas = params['topic_cols'].copy()
 
     # Forward fill by group all the null values in the regressors
     data[thetas] = data.groupby('countryid')[thetas].ffill()
-    regressors = thetas
+    regressors = thetas.copy()
     regressors.append(dep_var)
 
     # If the interaction list is not empty, add the interactions
@@ -346,8 +342,6 @@ def pred_model(data, model, params):
 
         regressors.append(params['dep_var'])
         exog = data[regressors]
-        if params['FD']:
-            exog = exog.groupby(exog.index.get_level_values(0)).diff(1)
         exog = exog[exog.index.get_level_values(1) == params['fit_year']]
 
         indices = list(set([i.split("_")[-1] for i in model.params.index]))
@@ -376,19 +370,13 @@ def compute_roc(master, model_params, file):
         else:
             model_name = 'Pooled OLS'
     else:
-        if not params['FD']:
-            model_name = 'Blundell-Bond'
-        else:
-            model_name = 'Blundell-Bond FD'
+        model_name = 'Blundell-Bond'
 
     dep_var = params['dep_var']
 
     true = master[master['theta_year'] == master['year']
                   ][['countryid', 'year', params['dep_var']]]
     true = true.set_index(['countryid', 'year'])
-
-    if params['FD']:
-        true = true.groupby(true.index.get_level_values(0)).diff(1)
 
     true = true[true.index.get_level_values(1) >= 1996.0]
 
@@ -433,8 +421,12 @@ def compute_roc(master, model_params, file):
     ax.set_ylabel("True Positive Rate")
     plt.legend(loc='lower right')
 
-    fig.suptitle("ROC Curve: " + model_name + ' of ' +
-                 all_labs['Labs'][params['dep_var']])
+    title = 'ROC Curve: ' + model_name
+    if not params['lagged_regs']:
+        title += [' Incidence', ' Onset'][model_params['onset']]
+    title += ' of ' + all_labs['Labs'][params['dep_var']]
+
+    fig.suptitle(title)
 
     if add_overall:
 
@@ -449,10 +441,40 @@ def compute_roc(master, model_params, file):
 
     fig.savefig(file)
 
+
+# Function to calculate the second order panel serial correlation significance
+def estat(model, lags):
+    resid = model.resids.copy()
+    resid = resid[[col for col in resid.columns if 'level' not in col]]
+    resid.columns = pd.MultiIndex.from_tuples(
+        [('diff', col[4:]) for col in resid.columns])
+    resid = resid.stack(level=1).reset_index().rename(
+        {'level_0': 'countryid', 'level_1': 'year'}, axis=1)
+    resid['year'] = resid['year'].astype(int)
+    resid['countryid'] = resid['countryid'].astype(int)
+
+    resid = resid.sort_values(by=['countryid', 'year'])
+    for lag in range(1, lags + 3):
+        resid['AR' + str(lag)] = resid.groupby('countryid')['diff'].shift(lag)
+    resid = resid.set_index(['countryid', 'year'])
+
+    y = resid['diff']
+    exog = resid[[col for col in resid.columns if "AR" in col]]
+    exog = sm.add_constant(exog)
+
+    res_mod = PanelOLS(y, exog, time_effects=True).fit(
+        cov_type='clustered', cluster_entity=True)
+
+    param = res_mod.params[list(
+        res_mod.params.index).index('AR' + str(lags + 2))]
+    pvalue = res_mod.pvalues[list(
+        res_mod.params.index).index('AR' + str(lags + 2))]
+
+    return(pvalue)
+
+
 # 3. Function to output latex regression table
-
-
-def out_latex(models, labs, model_params, file, type):
+def out_latex(models, labs, model_params, file):
 
     ############################################################################
     # Input Notes
@@ -473,72 +495,104 @@ def out_latex(models, labs, model_params, file, type):
     ############################################################################
 
     # Define the beginning of latex tabular to be put within table definition
-    string = "\\begin{center}\n\\begin{tabular}{l" + "c" * len(models) + \
+    string = "\\renewcommand{\\arraystretch}{0.5}"
+
+    string += "\\begin{center}\n\\begin{longtable}{l" + "c" * len(models) + \
         "}\n" + "\\\\[-1.8ex]\\hline\n"
 
+    string += "& \\multicolumn{" + str(len(models)) + "}{c}{Dependent Variable = " + \
+        labs[model_params['dep_var']] + "} \\\\\n" + "\\hline \\\\[-1.8ex]\n"
     string += "".join(["& $\\textbf{" + key + "}$" for key in models.keys()])
     string += "\\\\\n \\hline \\hline \n"
-    string += "& \\multicolumn{" + str(len(models)) + "}{c}{" + \
-        labs[model_params['dep_var']] + "} \\\\\n" + "\\hline \\\\[-1.8ex]\n"
 
-    param_ind = models[list(models.keys())[0]].params.index
+    full_ind = []
+    for key in models.keys():
+        indices = [
+            "Interacted" + i.split("BY")[0] if 'BY' in i else i for i in models[key].params.index]
+        if use_lags:
+            indices = [
+                "Interacted" + i.split("_")[-1].split("BY")[0] if 'BY' in i else i.split("_")[-1] for i in models[key].params.index]
+        full_ind.extend(indices)
 
-    indices = [i for i in range(len(param_ind)) if "BY" not in param_ind[i]]
+    full_ind = set(full_ind)
+    full_ind = sorted([col for col in full_ind if ('const' not in col) & ('Interacted' not in col)]) + sorted(
+        [col for col in full_ind if ('const' not in col) & ('Interacted' in col)]) + [col for col in full_ind if 'const' in col]
 
-    # Get coefficient values
-    params = [models[key].params.values[indices] for key in models]
-    # Get standard error values
-    errors = [models[key].std_errors.values[indices] for key in models]
-    # Get the pvalue values
-    pvals = [models[key].pvalues.values[indices] for key in models]
-    # List of Labels
+    num_params = len(full_ind)
+
+    vals = {key: {'params': {}, 'errors': {}, 'pvals': {}}
+            for key in models.keys()}
+
+    for key in models.keys():
+        indices = [
+            "Interacted" + i.split("BY")[0] if 'BY' in i else i for i in models[key].params.index]
+        if use_lags:
+            indices = [
+                "Interacted" + i.split("_")[-1].split("BY")[0] if 'BY' in i else i.split("_")[-1] for i in models[key].params.index]
+        params = models[key].params.values
+        errors = models[key].std_errors.values
+        pvals = models[key].pvalues.values
+
+        num_params = len(set(indices))
+
+        if use_lags:
+            params = params[:num_params]
+            errors = errors[:num_params]
+            pvals = pvals[:num_params]
+
+        vals[key]['params'] = dict(zip(indices, params))
+        vals[key]['errors'] = dict(zip(indices, errors))
+        vals[key]['pvals'] = dict(zip(indices, pvals))
+
     if not use_lags:
-        lab_list = [labs[i] for i in param_ind[indices]]
+        lab_list = {i: labs[i] for i in full_ind}
     else:
-        lab_list = [lag_labs[i.split("_")[-1]] for i in param_ind[indices]]
-
-    if use_lags:
-        num_params = len(set([i.split("_")[-1] for i in param_ind[indices]]))
-        params = params[:num_params]
-        errors = errors[:num_params]
-        pvals = pvals[:num_params]
-        lab_list = lab_list[:num_params]
+        lab_list = {i: lag_labs[i] for i in full_ind}
 
     # Iterate through the number of coefficients
-    for i in range(len(lab_list)):
-        if i != 0:
-            string += "\\\\"
+    for i, ind in enumerate(full_ind):
+        string += "\\\\"
 
-        string += lab_list[i]
+        string += lab_list[ind]
 
-        for j in range(len(models)):
-            string += " & " + str("{:.4f}".format(params[j][i]))
+        for key in models.keys():
+            if ind in vals[key]['params'].keys():
+                param = str("{:.4f}".format(vals[key]['params'][ind]))
+                if vals[key]['pvals'][ind] <= 0.01:
+                    star = "$^{***}$"
+                elif vals[key]['pvals'][ind] <= 0.05:
+                    star = "$^{**}$"
+                elif vals[key]['pvals'][ind] <= 0.1:
+                    star = "$^{*}$"
+                else:
+                    star = ""
+            else:
+                param = ""
+                star = ""
 
-            # Include the p value stars depending on the value
-            if pvals[j][i] <= 0.01:
-                string += "$^{***}$"
-            elif pvals[j][i] <= 0.05:
-                string += "$^{**}$"
-            elif pvals[j][i] <= 0.1:
-                string += "$^{*}$"
+            string += " & " + param + star
 
-        string += " \\\\\n "
+        string += "\\\\ \n "
 
-        for j in range(len(models)):
+        for key in models.keys():
 
-            # Add the errors below the coefficients
-            string += "& (" + str("{:.4f}".format(errors[j][i])) + ")"
+            if ind in vals[key]['params'].keys():
+                error = "(" + \
+                    str("{:.4f}".format(vals[key]['errors'][ind])) + ")"
+            else:
+                error = ""
+            string += "&" + error
 
-        string += "\\\\ \n"
+        string += "\n"
 
     # Include whether Time/Entity Effects were used
-    string += "\\hline \\\\[-1.8ex]\n \\\\ Included Effects: "
+    string += "\\\\ \\hline \\\\[-1.8ex]\n Included Effects: "
 
     for model in models:
         if not use_lags:
             effects = models[model].included_effects
         else:
-            effects = ['Time', 'Entity']
+            effects = ['Time']
         string += " & " + ", ".join([effect for effect in effects])
 
     # Include R-Squared in the outputs
@@ -550,10 +604,27 @@ def out_latex(models, labs, model_params, file, type):
     # Include number of observations
     string += "\\\\ Observations: "
     string += " & " + "&".join([str(model.nobs) for model in models.values()])
+    if use_lags:
+        string += "\\\\ Over-Identification p-Val: "
+        string += " & " + \
+            "&".join(["%.3f" % model.j_stat.pval for model in models.values()])
+        string += "\\\\ AB AR Order " + \
+            str(model_params['max_lags'] + 2) + " p-Val: "
+        string += " & " + "&".\
+            join(["%.3f" % estat(model, model_params['max_lags'])
+                  for model in models.values()])
+        string += "\\\\ Iterations: "
+        string += " & " + "&".join([str(model.iterations)
+                                    for model in models.values()])
 
-    string += "\\end{tabular}\n\\end{center}"
+    string += "\\\\ \\hline \\\\ \n \\multicolumn{" + str(
+        len(models)) + "}{c}{Robust Standard Errors are Shown in Parentheses} \\\\"
 
-    string += "Cluster Robust Standard Errors"
+    if use_lags:
+        string += "\n \\multicolumn{" + str(len(models)) + "}{c}{Max Lag Depth = " + str(
+            model_params['max_lags']) + "} \\\\"
+
+    string += "\\end{longtable}\n\\end{center}"
 
     # After creating latex string, write to tex file
     with open(file, 'w') as f:
