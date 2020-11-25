@@ -334,12 +334,6 @@ def pred_model(data, model, params):
                 np.where(preds['FE'].isnull(), 0, preds['FE'])
 
     else:
-        if params['interactions'] is not None:
-            for interact in params['interactions']:
-                col = [params['dep_var'] + 'BY' + interact]
-                data[col] = data[params['dep_var']] * data[interact]
-                regressors.append(params['dep_var'] + 'BY' + interact)
-
         regressors.append(params['dep_var'])
         exog = data[regressors]
         exog = exog[exog.index.get_level_values(1) == params['fit_year']]
