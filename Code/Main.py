@@ -70,10 +70,10 @@ class mainWindow(object):
         self.master = master
         self.Selection = {'Run_Regs': BooleanVar(),
                           'Run_Plots': BooleanVar()}
-        self.b = Checkbutton(master, text='Run Regressions',
+        self.b = Checkbutton(master, text='Run Regressions/ROC Curves',
                              variable=self.Selection['Run_Regs'])
         self.b.pack(anchor='w')
-        self.b2 = Checkbutton(master, text='Run Plots',
+        self.b2 = Checkbutton(master, text='Run Descriptive Plots',
                               variable=self.Selection['Run_Plots'])
         self.b2.pack(anchor='w')
         self.b3 = Button(master, text='Finish Selection',
