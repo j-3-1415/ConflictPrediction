@@ -15,6 +15,10 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import geopandas
+from statsmodels.tsa.stattools import acf
+import warnings
+
+warnings.filterwarnings('ignore')
 
 ##########################
 # Summary statistics
@@ -276,7 +280,7 @@ divider = make_axes_locatable(ax)
 cax = divider.append_axes("bottom", size="3%", pad=0.1)
 
 conflict_map.plot(column='bdbest25', legend=True, cmap='Reds', legend_kwds={'label': "Percentage of Years in Armed Conflict",
-    'orientation': "horizontal"}, ax=ax, cax=cax)
+                                                                            'orientation': "horizontal"}, ax=ax, cax=cax)
 # for idx, row in conflict_map.iterrows():
 #     ax.annotate(s=row['isocode'], xy=row['coords'],
 #                  horizontalalignment='center', size=2)
@@ -307,3 +311,45 @@ g.add_legend()
 g.set(ylim=(-0.1, 1.1))
 plt.savefig(currDir + "/Report/InteractionRegressions.png")
 plt.close()
+
+print("============================================================")
+print("Creating and Saving Grouped ACF Plot in Report")
+print("============================================================")
+
+df = master[master['theta_year'] == 2013]
+df = df.sort_values(by=['countryid', 'year'])
+def get_acf(col, nlags):
+    acfs = [0] * nlags
+    lags = [str(i) for i in range(1, (nlags + 1))]
+    count = 0
+
+    for j, country in enumerate(df['countryid'].unique()):
+        arr = acf(df[df['countryid'] == country]
+                  [col], missing='drop', nlags=nlags)
+        if any(pd.isna(arr)):
+            pass
+        else:
+            acfs = [acfs[i] + arr[i] for i in range(len(acfs))]
+            count += 1
+
+    acfs = [i / count for i in acfs]
+    acfs = pd.DataFrame([lags, acfs]).T
+    acfs = acfs.rename({0: 'Lag', 1: 'ACF'}, axis=1)
+
+    return(acfs)
+
+fig, ax = plt.subplots(1)
+plt.plot(get_acf('bdbest25', 20)['Lag'], get_acf('bdbest25', 20)['ACF'],
+    label = 'Armed Conflict ACF')
+plt.plot(get_acf('bdbest1000', 20)['Lag'], get_acf('bdbest1000', 20)['ACF'],
+    label = 'Civil War ACF')
+plt.plot(get_acf('bdbest', 20)['Lag'], get_acf('bdbest', 20)['ACF'],
+    label = 'Battle Deaths ACF')
+plt.legend(loc='upper right')
+fig.suptitle('ACF of Dependent Variables')
+ax.set_xlabel('Lag', fontsize=10)
+ax.set_ylabel('ACF Value', fontsize=10)
+plt.savefig(currDir + "/Report/DependentVar_AutoCorr.png")
+plt.close()
+
+
