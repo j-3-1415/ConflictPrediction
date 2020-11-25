@@ -14,24 +14,32 @@ from tkinter import *
 global local  # Define global variable of input for file source
 global FileDict  # Define global variable for file importation
 
-local = False
+local = True
+currDir = os.getcwd()
 
 class mainWindow(object):
-    def __init__(self,master):
-        self.master=master
-        self.b=Button(master,text='Download From Local',
-            command=lambda *args: self.set_value(True)).pack()
-        self.b2=Button(master,text='Download From Dropbox',
-            command=lambda *args: self.set_value(False)).pack()
+    def __init__(self, master):
+        self.master = master
+        self.Selection = {'Local': BooleanVar(),
+                          'Dropbox': BooleanVar()}
+        self.b = Checkbutton(master, text='Download From Local',
+                             variable=self.Selection['Local'])
+        self.b.pack(anchor='w')
+        self.b2 = Checkbutton(master, text='Download From Dropbox',
+                              variable=self.Selection['Dropbox'])
+        self.b2.pack(anchor='w')
+        self.b3 = Button(master, text='Finish Selection',
+                         command=lambda: self.finish()).pack()
 
-    def set_value(self, value):
-        local = value
+    def finish(self):
+        local = self.Selection['Local'].get()
         self.master.destroy()
 
-root=Tk()
+
+root = Tk()
 root.geometry("350x75")
 root.title("Download data locally or from Dropbox?")
-m=mainWindow(root)
+m = mainWindow(root)
 root.mainloop()
 
 # Create a dictionary of files paths for dropbox. Used in FileRead function
@@ -111,15 +119,16 @@ def FileRead(KeyName):
 # Create a dictionary with labels for each column
 labs = {'year': 'Article Year', 'theta_year': 'Topic Year',
         'countryid': 'CountryID', 'pop': 'Country Population',
-        'theta0': 'Industry', 'theta1': 'CivicLife1',
+        'theta0': 'Industry', 'theta1': 'CivLife1',
         'theta2': 'Asia', 'theta3': 'Sports',
         'theta4': 'Justice', 'theta5': 'Tourism',
         'theta6': 'Politics', 'theta7': 'Conflict1',
         'theta8': 'Business', 'theta9': 'Economics',
-        'theta10': 'InterRelations1', 'theta11': 'InterRelations2',
-        'theta12': 'Conflict3', 'theta13': 'CivicLife2',
+        'theta10': 'IntRel1', 'theta11': 'IntRel2',
+        'theta12': 'Conflict3', 'theta13': 'CivLife2',
         'theta14': 'Conflict2', 'bdbest1000': "Civil War",
-        'bdbest25': "Armed Conflict", 'const': 'Constant'}
+        'bdbest25': "Armed Conflict", 'const': 'Constant',
+        'bdbest' : 'Battle Deaths'}
 
 # Two main files needed for merge: thetas and complete data including dep var and controls
 
@@ -130,15 +139,15 @@ complete_file = FileRead("CompleteMain")
 theta_years = list(range(1995, 2015))
 
 # specify the controls you want to use
-own = ['region_o', 'subregion_o', 'discrimshare']
+own = ['region_o', 'subregion_o', 'discrimshare', 'bdbest']
 
 # Include the desired interaction variables to be include in master dataframe
 interactions = ['childmortality', 'rgdpl', 'democracy', 'avegoodex']
 interactions_names = ['ChildMortality', 'RealGDP',
                       'DemocracyIndex', 'AveGoodIndex']
-add_labs = dict(zip(interactions, interactions_names))
 
-labs.update(add_labs)  # include them in labels
+ # include them in labels
+labs.update(dict(zip(interactions, interactions_names))) 
 
 own.extend(interactions)
 
@@ -146,8 +155,11 @@ own.extend(interactions)
 labs.update({"theta" + str(i) + "_BY_" + inter:
              labs["theta" + str(i)] + " by " + labs[inter]
              for i in range(0, 15) for inter in interactions})
+labs.update({'Interactedtheta' + str(i) : 'Interacted ' + labs['theta' + str(i)] for i in range(0, 15)})
 
-lag_labs = {key: "Lag of " + val for key, val in labs.items()}
+labs.update({'Interactedbdbest25' : 'Interacted ' + labs['bdbest25']})
+
+lag_labs = {key: "Lag " + val for key, val in labs.items()}
 
 all_labs = {'Labs': labs, 'Lag_Labs': lag_labs}
 
