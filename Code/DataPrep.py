@@ -13,8 +13,9 @@ from tkinter import *
 # global currDir  # Define global variable of current directory
 global local  # Define global variable of input for file source
 global FileDict  # Define global variable for file importation
+global currDir
 
-local = True
+local = {}
 currDir = os.getcwd()
 
 class mainWindow(object):
@@ -32,7 +33,8 @@ class mainWindow(object):
                          command=lambda: self.finish()).pack()
 
     def finish(self):
-        local = self.Selection['Local'].get()
+        local['Local'] = self.Selection['Local'].get()
+        local['Dropbox'] = self.Selection['Dropbox'].get()
         self.master.destroy()
 
 
@@ -103,11 +105,16 @@ def FileRead(KeyName):
         FileName = FileDict[KeyName][1]
 
     # Condition for whether imported locally or from dropbox
-    if local:
+    if local['Local']:
+        print('Downloading Locally')
         path = currDir + "/dataverse_files/data/" + FileName
-    else:
+    elif local['Dropbox']:
+        print('Downloading from Dropbox Online')
         code = FileDict[KeyName][0]  # Get dropbox code
         path = "https://www.dropbox.com/s/" + code + "/" + FileName + "?dl=1"
+    else:
+        print("Choose Either Local or Dropbox Import")
+        sys.exit()
 
     # DTA files are STATA files and need a different import function
     if '.dta' in path:
@@ -147,7 +154,7 @@ interactions_names = ['ChildMortality', 'RealGDP',
                       'DemocracyIndex', 'AveGoodIndex']
 
  # include them in labels
-labs.update(dict(zip(interactions, interactions_names))) 
+labs.update(dict(zip(interactions, interactions_names)))
 
 own.extend(interactions)
 
@@ -157,9 +164,9 @@ labs.update({"theta" + str(i) + "_BY_" + inter:
              for i in range(0, 15) for inter in interactions})
 labs.update({'Interactedtheta' + str(i) : 'Interacted ' + labs['theta' + str(i)] for i in range(0, 15)})
 
-labs.update({'Interactedbdbest25' : 'Interacted ' + labs['bdbest25']})
-
 lag_labs = {key: "Lag " + val for key, val in labs.items()}
+
+lag_labs.update({'L' + key : 'Lag2 ' + labs[key] for key in ['bdbest25', 'bdbest1000', 'bdbest']})
 
 all_labs = {'Labs': labs, 'Lag_Labs': lag_labs}
 
