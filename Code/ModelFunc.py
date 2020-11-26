@@ -148,12 +148,17 @@ def blundell_bond(data, params):
     interactions = params['interactions']
 
     max_lags = params['max_lags'] - 1
+    maxldep = params['maxldep'] - 1
 
-    start = 1
+    depl = params['dep_lags']
+
+    start = depl
 
     weight_type = params['weight_type']
 
     iters = params['iterations']
+
+    cov_type = params['cov_type']
 
     # The order of null filling and removal is done according to the authors
     #       code, changing the order changes the result
@@ -167,9 +172,12 @@ def blundell_bond(data, params):
 
     # Define the column names of thetas to be used as regressors
     thetas = params['topic_cols'].copy()
+    data['L' + dep_var] = data[dep_var].copy()
 
     # Forward fill by group all the null values in the regressors
     data[thetas] = data.groupby('countryid')[thetas].ffill()
+    if dep_var == 'bdbest':
+        data[thetas] = data[thetas] * 100
     regressors = thetas.copy()
     regressors.append(dep_var)
 
@@ -180,6 +188,8 @@ def blundell_bond(data, params):
                 'countryid')[interact].fillna(method='backfill')
             data[interact] = data.groupby(
                 'countryid')[interact].fillna(method='ffill')
+            if (interact in params['scaled']) & (dep_var != 'bdbest'):
+                data[interact] = (data[interact] * 0.5) / data[interact].mean()
             cols = [x + "BY" + interact for x in thetas]
             data[cols] = data[thetas].multiply(data[interact], axis='index')
             regressors.extend(cols)
@@ -202,41 +212,55 @@ def blundell_bond(data, params):
 
     # Remove all years after fit_year, authors define a sample variable in code
     data = data[data['year'] <= fit_year]
-    data = data[['countryid', 'year'] + regressors]
+    data = data[['countryid', 'year'] + regressors + ['L' + dep_var]]
     data['year'] = data['year'] - data['year'].min() + 1
     max_year = int(data['year'].max())
     data['year'] = data['year'].apply(lambda x: 'Year' + str(int(x)))
-    data = data.pivot(index='countryid', columns='year')[regressors]
+    data = data.pivot(index='countryid', columns='year')[
+        regressors + ['L' + dep_var]]
 
     data.columns = [col[1] + "_" + col[0]
                     for col in data.columns.values]
 
     for i in range(1, max_year):
-        for col in regressors:
+        for col in regressors + ['L' + dep_var]:
             col1 = 'Year' + str(i + 1) + "_" + col
             col2 = 'Year' + str(i) + "_" + col
             diff_col = 'Diff_' + str(i + 1) + "_" + col
             data[diff_col] = data[col1] - data[col2]
 
+    data = data.dropna(axis=0)
+
     formula = dict()
 
-    for i in range(start, (max_year - 1)):
-        l_dep = 'Year' + str(i + 2) + "_" + dep_var
+    for i in range(start, (max_year - depl)):
+        l_dep = 'Year' + str(i + [1, 2][start == 1]) + "_" + dep_var
 
         d_dep = 'Diff_' + str(i + 2) + "_" + dep_var
 
-        l_endog = ['Year' + str(i + 1) + "_" + col for col in regressors]
+        l_endog = ['Year' + str(i + [0, 1][start == 1]) +
+                   "_" + col for col in regressors]
 
         d_endog = ['Diff_' + str(i + 1) + "_" + col for col in regressors]
 
-        d_inst = ['Year' + str(j) + "_" + col for col in regressors
-                  for j in range(max(start, i - max_lags), (i + 1))]
+        ldep_cols = [col for col in regressors if dep_var not in col]
+        d_inst = ['Year' + str(j) + "_" + col for col in ldep_cols
+                  for j in range(max(start, i - maxldep), (i + 1))]
+        d_inst += ['Year' + str(j) + "_" + dep_var
+                   for j in range(max(start, i - max_lags), (i + 1))]
 
-        l_inst = ['Diff_' + str(i + 1) + "_" + col for col in regressors]
+        if depl >= 2:
+            d_inst = ['Year' + str(j) + "_" + dep_var
+                      for j in range(max(start - 1, i - max_lags - 1), (i))]
+            d_inst += ['Year' + str(j) + "_" + col for col in ldep_cols
+                       for j in range(max(start - 1, i - maxldep - 1), (i))]
 
-        formula['level' + str(i)] = l_dep + " ~ [" + \
+        l_inst = ['Diff_' + str(i + [0, 1][start == 1]) +
+                  "_" + col for col in regressors]
+
+        formula['level' + str(i)] = l_dep + " ~ " + ["", 'Year' + str(i - depl + 1) + "_L" + dep_var + " + "][depl >= 2] + "[" + \
             " + ".join(l_endog) + " ~ " + " + ".join(l_inst) + "]"
-        formula['diff' + str(i)] = d_dep + " ~ [" + \
+        formula['diff' + str(i)] = d_dep + " ~ " + ["", 'Diff_' + str(i - depl + 2) + "_L" + dep_var + " + "][depl >= 2] + "[" + \
             " + ".join(d_endog) + " ~ " + " + ".join(d_inst) + "]"
 
     mod = IVSystemGMM.from_formula(formula, data, weight_type=weight_type)
@@ -260,7 +284,7 @@ def blundell_bond(data, params):
     constraints = pd.DataFrame(constraints)
 
     mod.add_constraints(r=constraints)
-    fit = mod.fit(cov_type='robust', iter_limit=iters)
+    fit = mod.fit(cov_type=cov_type, iter_limit=iters)
 
     return(fit)
 
@@ -294,6 +318,8 @@ def pred_model(data, model, params):
     # If the interaction list is not empty, add the interactions
     if params['interactions'] is not None:
         for interact in params['interactions']:
+            if interact in params['scaled']:
+                data[interact] = (data[interact] * 0.5) / data[interact].mean()
             cols = [x + "BY" + interact for x in thetas]
             data[cols] = data[thetas].multiply(data[interact], axis='index')
             regressors.extend(cols)
@@ -337,6 +363,9 @@ def pred_model(data, model, params):
         regressors.append(params['dep_var'])
         exog = data[regressors]
         exog = exog[exog.index.get_level_values(1) == params['fit_year']]
+        if params['dep_lags'] >= 2:
+            exog['L' + params['dep_var']] = exog.groupby(exog.index.get_level_values(0))[
+                params['dep_var']].shift()
 
         indices = list(set([i.split("_")[-1] for i in model.params.index]))
         num_params = len(indices)
@@ -373,6 +402,8 @@ def compute_roc(master, model_params, file):
     true = true.set_index(['countryid', 'year'])
 
     true = true[true.index.get_level_values(1) >= 1996.0]
+
+    print(true.head())
 
     pred_dfs = [None] * len(range(1995, 2014))
 
@@ -438,7 +469,7 @@ def compute_roc(master, model_params, file):
 
 # Function to calculate the second order panel serial correlation significance
 def estat(model, lags):
-    resid = model.resids.copy()
+    resid = model.wresids.copy()
     resid = resid[[col for col in resid.columns if 'level' not in col]]
     resid.columns = pd.MultiIndex.from_tuples(
         [('diff', col[4:]) for col in resid.columns])
@@ -453,16 +484,15 @@ def estat(model, lags):
     resid = resid.set_index(['countryid', 'year'])
 
     y = resid['diff']
-    exog = resid[[col for col in resid.columns if "AR" in col]]
+    exog = resid[[col for col in resid.columns if "AR" + str(lags + 1) in col]]
     exog = sm.add_constant(exog)
 
-    res_mod = PanelOLS(y, exog, time_effects=True).fit(
-        cov_type='clustered', cluster_entity=True)
+    res_mod = PanelOLS(y, exog).fit()
 
     param = res_mod.params[list(
-        res_mod.params.index).index('AR' + str(lags + 2))]
+        res_mod.params.index).index('AR' + str(lags + 1))]
     pvalue = res_mod.pvalues[list(
-        res_mod.params.index).index('AR' + str(lags + 2))]
+        res_mod.params.index).index('AR' + str(lags + 1))]
 
     return(pvalue)
 
@@ -605,7 +635,7 @@ def out_latex(models, labs, model_params, file):
         string += "\\\\ AB AR Order " + \
             str(model_params['max_lags'] + 2) + " p-Val: "
         string += " & " + "&".\
-            join(["%.3f" % estat(model, model_params['max_lags'])
+            join(["%.3f" % estat(model, model_params['dep_lags'])
                   for model in models.values()])
         string += "\\\\ Iterations: "
         string += " & " + "&".join([str(model.iterations)
@@ -620,6 +650,9 @@ def out_latex(models, labs, model_params, file):
 
     string += "\\end{longtable}\n\\end{center}"
 
+    # After creating latex string, write to tex file
+    with open(file, 'w') as f:
+        f.write(string)
     # After creating latex string, write to tex file
     with open(file, 'w') as f:
         f.write(string)
