@@ -15,7 +15,7 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import geopandas
-from statsmodels.tsa.stattools import acf
+from statsmodels.tsa.stattools import acf, pacf, adfuller
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -27,6 +27,7 @@ warnings.filterwarnings('ignore')
 # Define the summary columns to display in the panel summary
 sum_cols = ['year', 'countryid', 'bdbest25', 'bdbest1000']
 sum_cols.extend([col for col in master.columns if 'theta' in col])
+sum_cols.extend(interactions)
 
 # Define the topic generation year to use for the summary, currently 2013
 master2013 = master[master['theta_year'] == 2013][sum_cols]
@@ -36,6 +37,7 @@ master2013.drop('index', axis=1, inplace=True)
 
 def xtsum(data, labs, indiv, time):
 
+    data = data.copy(deep=True)
     # Don't need to summarize the index columns
     cols = [col for col in sum_cols if col not in [indiv, time]]
 
@@ -64,7 +66,7 @@ def xtsum(data, labs, indiv, time):
             np.max(data.groupby(time, as_index=False)[col].mean()[col])
 
         df.loc[(labs[col], "between"), 'Observations'] = \
-            len(data[~np.isnan(data[col])][time].unique())
+            len(data[~np.isnan(data[col])][indiv].unique())
 
         df.loc[(labs[col], 'between'), 'Std. Dev.'] = np.sqrt(np.sum(np.power(data.groupby(time)[
             col].mean() - np.mean(data[col]), 2)) / (df.loc[(labs[col], 'between'), 'Observations'] - 1))
@@ -72,26 +74,32 @@ def xtsum(data, labs, indiv, time):
         df.loc[(labs[col], 'within'), 'Mean'] = np.nan
         df.loc[(labs[col], 'within'), 'Min'] = \
             np.min(data[col] + np.mean(data[col]) - data.merge(
-                data.groupby(time, as_index=False)[col].mean().rename(
-                    {col: 'mean'}, axis=1), on=[time], how='left')['mean'])
+                data.groupby(indiv, as_index=False)[col].mean().rename(
+                    {col: 'mean'}, axis=1), on=[indiv], how='left')['mean'])
 
         df.loc[(labs[col], 'within'), 'Max'] = \
             np.max(data[col] + np.mean(data[col]) - data.merge(
-                data.groupby(time, as_index=False)[col].mean().rename(
-                    {col: 'mean'}, axis=1), on=[time], how='left')['mean'])
+                data.groupby(indiv, as_index=False)[col].mean().rename(
+                    {col: 'mean'}, axis=1), on=[indiv], how='left')['mean'])
 
         df.loc[(labs[col], "within"), 'Observations'] = \
-            len(data[~np.isnan(data[col])][indiv].unique())
+            len(data[~np.isnan(data[col])][time].unique())
 
         df.loc[(labs[col], 'within'), 'Std. Dev.'] = \
             np.sqrt(np.sum(np.power(data[col] - data.merge(
-                data.groupby(time, as_index=False)[col].mean().rename(
-                    {col: 'mean'}, axis=1), on=time, how='left')['mean'], 2))
+                data.groupby(indiv, as_index=False)[col].mean().rename(
+                    {col: 'mean'}, axis=1), on=indiv, how='left')['mean'], 2))
                     / (data[col].count() - 1))
 
         df.fillna("", inplace=True)
 
-        return(df)
+    return(df)
+
+
+df = xtsum(master2013, labs, 'countryid', 'year')
+# Write the dataframe to latex with a few extra formatting add ons
+df.to_latex(currDir + "/Report/xtsum_new.tex", bold_rows=True, multirow=True,
+            float_format="{:0.3f}".format)
 
 ##########################
 # Plots
@@ -299,14 +307,15 @@ cols = ['childmortality', 'democracy', 'rgdpl', 'avegoodex']
 
 df = master[master['theta_year'] == 2013]
 df = df.groupby('countryid')[cols].mean().\
-    melt(value_vars=cols, ignore_index=False, var_name='Interaction').\
+    melt(value_vars=cols, var_name='Interaction', ignore_index=False).\
     merge(df.groupby('countryid')['bdbest25'].agg(lambda x: np.where(
-        x.sum() == 0, 1, 0)), how='left', left_index=True, right_index=True).\
-    rename({'bdbest25': 'No Conflict'}, axis=1)
+        x.sum() == 0, 0, 1)), how='left', left_index=True, right_index=True).\
+    rename({'bdbest25': 'Conflict'}, axis=1)
 df['Interaction'] = df['Interaction'].map(labs)
 
+sns.set(style="whitegrid")
 g = sns.FacetGrid(df, col='Interaction', sharex=False, sharey=False, col_wrap=2)
-g.map(sns.regplot, 'value', 'No Conflict', truncate=True)
+g.map(sns.regplot, 'value', 'Conflict', truncate=True, color='navy')
 g.add_legend()
 g.set(ylim=(-0.1, 1.1))
 plt.savefig(currDir + "/Report/InteractionRegressions.png")
@@ -318,6 +327,8 @@ print("============================================================")
 
 df = master[master['theta_year'] == 2013]
 df = df.sort_values(by=['countryid', 'year'])
+
+
 def get_acf(col, nlags):
     acfs = [0] * nlags
     lags = [str(i) for i in range(1, (nlags + 1))]
@@ -338,18 +349,17 @@ def get_acf(col, nlags):
 
     return(acfs)
 
+
 fig, ax = plt.subplots(1)
 plt.plot(get_acf('bdbest25', 20)['Lag'], get_acf('bdbest25', 20)['ACF'],
-    label = 'Armed Conflict ACF')
+         label='Armed Conflict ACF')
 plt.plot(get_acf('bdbest1000', 20)['Lag'], get_acf('bdbest1000', 20)['ACF'],
-    label = 'Civil War ACF')
+         label='Civil War ACF')
 plt.plot(get_acf('bdbest', 20)['Lag'], get_acf('bdbest', 20)['ACF'],
-    label = 'Battle Deaths ACF')
+         label='Battle Deaths ACF')
 plt.legend(loc='upper right')
 fig.suptitle('ACF of Dependent Variables')
 ax.set_xlabel('Lag', fontsize=10)
 ax.set_ylabel('ACF Value', fontsize=10)
 plt.savefig(currDir + "/Report/DependentVar_AutoCorr.png")
 plt.close()
-
-
