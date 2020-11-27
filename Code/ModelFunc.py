@@ -484,15 +484,16 @@ def estat(model, lags):
     resid = resid.set_index(['countryid', 'year'])
 
     y = resid['diff']
-    exog = resid[[col for col in resid.columns if "AR" + str(lags + 1) in col]]
+    exog = resid[[col for col in resid.columns if "AR" + str(lags) in col]]
     exog = sm.add_constant(exog)
 
-    res_mod = PanelOLS(y, exog).fit()
+    res_mod = PanelOLS(y, exog, time_effects=True, entity_effects=True).fit(
+        cov_type='clustered', cluster_entity=True)
 
     param = res_mod.params[list(
-        res_mod.params.index).index('AR' + str(lags + 1))]
+        res_mod.params.index).index('AR' + str(lags))]
     pvalue = res_mod.pvalues[list(
-        res_mod.params.index).index('AR' + str(lags + 1))]
+        res_mod.params.index).index('AR' + str(lags))]
 
     return(pvalue)
 
@@ -514,6 +515,16 @@ def out_latex(models, labs, model_params, file):
     labs = labs['Labs']
 
     use_lags = model_params['lagged_regs']
+
+    order = [model_params['dep_var'], 'L' + model_params['dep_var']]
+    theta_order = ['theta2', 'theta8', 'theta1', 'theta13', 'theta7', 'theta14', 'theta12', 'theta9', 'theta0', 'theta10', 'theta11', 'theta4',
+                   'theta6', 'theta3', 'theta5']
+    inter_order = ['Interacted' + col for col in theta_order if 'theta' in col]
+    temp = [None] * (len(theta_order) * 2)
+    temp[::2] = theta_order
+    temp[1::2] = inter_order
+    order.extend(temp)
+    order.append('const')
     ############################################################################
     # Input Notes
     ############################################################################
@@ -539,8 +550,7 @@ def out_latex(models, labs, model_params, file):
         full_ind.extend(indices)
 
     full_ind = set(full_ind)
-    full_ind = sorted([col for col in full_ind if ('const' not in col) & ('Interacted' not in col)]) + sorted(
-        [col for col in full_ind if ('const' not in col) & ('Interacted' in col)]) + [col for col in full_ind if 'const' in col]
+    full_ind = [col for col in order if col in full_ind]
 
     num_params = len(full_ind)
 
@@ -633,9 +643,9 @@ def out_latex(models, labs, model_params, file):
         string += " & " + \
             "&".join(["%.3f" % model.j_stat.pval for model in models.values()])
         string += "\\\\ AB AR Order " + \
-            str(model_params['max_lags'] + 2) + " p-Val: "
+            str(2) + " p-Val: "
         string += " & " + "&".\
-            join(["%.3f" % estat(model, model_params['dep_lags'])
+            join(["%.3f" % estat(model, 2)
                   for model in models.values()])
         string += "\\\\ Iterations: "
         string += " & " + "&".join([str(model.iterations)
