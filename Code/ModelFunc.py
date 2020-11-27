@@ -318,7 +318,7 @@ def pred_model(data, model, params):
     # If the interaction list is not empty, add the interactions
     if params['interactions'] is not None:
         for interact in params['interactions']:
-            if interact in params['scaled']:
+            if (interact in params['scaled']) & (not params['lagged_regs']):
                 data[interact] = (data[interact] * 0.5) / data[interact].mean()
             cols = [x + "BY" + interact for x in thetas]
             data[cols] = data[thetas].multiply(data[interact], axis='index')
@@ -402,8 +402,6 @@ def compute_roc(master, model_params, file):
     true = true.set_index(['countryid', 'year'])
 
     true = true[true.index.get_level_values(1) >= 1996.0]
-
-    print(true.head())
 
     pred_dfs = [None] * len(range(1995, 2014))
 
