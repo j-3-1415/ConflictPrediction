@@ -46,11 +46,15 @@ bb_armed = {
     "all_indiv": True,  # Include all countries or not
     "FE": False,  # Pooled Model or Fixed Effects
     'interactions': None,  # Set of interaction vars (can be None)
-    'max_lags': 2,  # Set max lags for instrumental variables
+    'max_lags': 3,  # Set max lags for instrumental variables
     'lagged_regs': True,  # Define whether to use lagged labels
-    'iterations': 5,  # How many iterations for system gmm
+    'iterations': 15,  # How many iterations for system gmm
     'topic_cols': ['theta' + str(i) for i in range(1, 15)],  # theta cols
-    'weight_type': 'unadjusted'  # Type of gmm weighting matrix
+    'weight_type': 'unadjusted',  # Type of gmm weighting matrix
+    'dep_lags' : 1,
+    'maxldep' : 3,
+    'scaled' : ['rgdpl'],
+    'cov_type' : 'robust'
 }
 
 dep_map = {'armed': 'bdbest25', 'civil': 'bdbest1000', 'deaths': 'bdbest'}
