@@ -44,6 +44,14 @@ root.title("Download data locally or from Dropbox?")
 m = mainWindow(root)
 root.mainloop()
 
+if local['Local']:
+    print('Downloading Locally')
+elif local['Dropbox']:
+    print('Downloading from Dropbox Online')
+else:
+    print("Choose Either Local or Dropbox Import")
+    sys.exit()
+
 # Create a dictionary of files paths for dropbox. Used in FileRead function
 FileDict = {
     'Topics': ["wz1azpy6teayyzr", "topics.csv"],
@@ -106,15 +114,10 @@ def FileRead(KeyName):
 
     # Condition for whether imported locally or from dropbox
     if local['Local']:
-        print('Downloading Locally')
         path = currDir + "/dataverse_files/data/" + FileName
     elif local['Dropbox']:
-        print('Downloading from Dropbox Online')
         code = FileDict[KeyName][0]  # Get dropbox code
         path = "https://www.dropbox.com/s/" + code + "/" + FileName + "?dl=1"
-    else:
-        print("Choose Either Local or Dropbox Import")
-        sys.exit()
 
     # DTA files are STATA files and need a different import function
     if '.dta' in path:
