@@ -9,6 +9,7 @@ from ModelFunc import *
 from DataPrep import *
 from collections import OrderedDict
 from tkinter import *
+from statsmodels.stats.diagnostic import acorr_ljungbox
 
 # import data and functions
 # import libraries
@@ -16,6 +17,7 @@ warnings.filterwarnings('ignore')
 
 global sections
 sections = {}
+
 
 class mainWindow(object):
     def __init__(self, master):
@@ -60,7 +62,11 @@ def create_file(params, labs, method):
 
     if params['lagged_regs']:
         path += "_Iter" + str(params['iterations'])
-        path += "_LagDepth" + str(params['max_lags'])
+        path += "_MaxLags" + str(params['max_lags'])
+        path += "_MaxLDep" + str(params['maxldep'])
+        path += "_DepLags" + str(params['dep_lags'])
+        if params['scaled'] is not None:
+            path += '_ScaledInteract'
 
     if method == 'Regress':
         path += "_" + str(int(params['fit_year']))
@@ -214,18 +220,18 @@ if sections['Run_Regs']:
     print("Outputting Blundell-Bond Models to Latex")
     print("============================================================")
     bb_armed_file = currDir + \
-        create_file(params['bb']['armed']['Init'], labs, "Regress")
+        create_file(params['bb']['armed']['gdp'], labs, "Regress")
     bb_civil_file = currDir + \
-        create_file(params['bb']['civil']['Init'], labs, "Regress")
+        create_file(params['bb']['civil']['gdp'], labs, "Regress")
     bb_deaths_file = currDir + \
-        create_file(params['bb']['deaths']['Init'], labs, "Regress")
+        create_file(params['bb']['deaths']['gdp'], labs, "Regress")
 
     out_latex(bb_armed_dict, all_labs,
-              params['bb']['armed']['Init'], bb_armed_file)
+              params['bb']['armed']['gdp'], bb_armed_file)
     out_latex(bb_civil_dict, all_labs,
-              params['bb']['civil']['Init'], bb_civil_file)
+              params['bb']['civil']['gdp'], bb_civil_file)
     out_latex(bb_deaths_dict, all_labs,
-              params['bb']['deaths']['Init'], bb_deaths_file)
+              params['bb']['deaths']['gdp'], bb_deaths_file)
 
 if sections['Run_ROC']:
 
@@ -335,48 +341,3 @@ if sections['Run_ROC']:
                                  ['civil']['incidence']['good'], labs, 'ROC')
     compute_roc(master, params['fe']
                 ['civil']['incidence']['good'], file)
-
-    print("============================================================")
-    print("Basic Blundell-Bond Model ROC Curve")
-    print("============================================================")
-    file = currDir + create_file(params['bb']['armed']['Init'], labs, 'ROC')
-    compute_roc(master, params['bb']['armed']['Init'], file)
-
-    file = currDir + create_file(params['bb']['civil']['Init'], labs, 'ROC')
-    compute_roc(master, params['bb']['civil']['Init'], file)
-
-    print("============================================================")
-    print("Blundell-Bond Model Interacted with Child Mortality ROC Curve")
-    print("============================================================")
-    file = currDir + create_file(params['bb']['armed']['child'], labs, 'ROC')
-    compute_roc(master, params['bb']['armed']['child'], file)
-
-    file = currDir + create_file(params['bb']['civil']['child'], labs, 'ROC')
-    compute_roc(master, params['bb']['civil']['child'], file)
-
-    print("============================================================")
-    print("Blundell-Bond Model Interacted with Democracy ROC Curve")
-    print("============================================================")
-    file = currDir + create_file(params['bb']['armed']['democ'], labs, 'ROC')
-    compute_roc(master, params['bb']['armed']['democ'], file)
-
-    file = currDir + create_file(params['bb']['civil']['democ'], labs, 'ROC')
-    compute_roc(master, params['bb']['civil']['democ'], file)
-
-    print("============================================================")
-    print("Blundell-Bond Model Interacted with GDP ROC Curve")
-    print("============================================================")
-    file = currDir + create_file(params['bb']['armed']['gdp'], labs, 'ROC')
-    compute_roc(master, params['bb']['armed']['gdp'], file)
-
-    file = currDir + create_file(params['bb']['civil']['gdp'], labs, 'ROC')
-    compute_roc(master, params['bb']['civil']['gdp'], file)
-
-    print("============================================================")
-    print("Blundell-Bond Model Interacted with Good Index ROC Curve")
-    print("============================================================")
-    file = currDir + create_file(params['bb']['armed']['good'], labs, 'ROC')
-    compute_roc(master, params['bb']['armed']['good'], file)
-
-    file = currDir + create_file(params['bb']['civil']['good'], labs, 'ROC')
-    compute_roc(master, params['bb']['civil']['good'], file)
