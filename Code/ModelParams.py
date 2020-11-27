@@ -21,6 +21,7 @@ pool_armed_onset = {
     'iterations': 2,  # How many iterations for system gmm
     'topic_cols': ['theta' + str(i) for i in range(1, 15)],  # theta cols
     'weight_type': 'unadjusted',  # Type of gmm weighting matrix
+    'scaled' : ['rgdpl'],
 }
 
 # baseline fixed effects bdbest25
@@ -36,6 +37,7 @@ fe_armed_onset = {
     'iterations': 2,  # How many iterations for system gmm
     'topic_cols': ['theta' + str(i) for i in range(1, 15)],  # theta cols
     'weight_type': 'unadjusted',  # Type of gmm weighting matrix
+    'scaled' : ['rgdpl'],
 }
 
 # baseline blundell bond bdbest25
