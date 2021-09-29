@@ -34,10 +34,4 @@ the descriptive plots.
 ![selectdata](select_data.png)
 
 This is all that has to be done. The console output will inform you about the progress and all results
-will be stored in the 'Report' folder. 
-
-
-## Versioning
-
-We use bitbucket to version the code. Prior commits can be obtained from 
-https://bitbucket.org/aboomer07/mastercode/commits/ (bitbucket account necessary). 
+will be stored in the 'Report' folder.
