@@ -1,13 +1,17 @@
-# Panel Data Project 2020
+# Conflict Prediction
 
-* **Andrew Boomer**
+This project was done in collaboration with Jacob Pichelmann and Luca Poll.
 
-* **Jacob Pichelmann**
+## Overview
+This paper was the final project for a Panel Data class during my masters program at the Toulouse School of Economics. It was a replication and extension of the paper "Reading between the lines: Prediction of political violence using newspaper text" which can be found [here](https://www.repository.cam.ac.uk/bitstream/handle/1810/302412/mueller%20and%20rauh%202018.pdf?sequence=1). The paper investigates the limitations to conflict prediction with country specific fixed effects, such as geography, climate, and ethnic fractionalization. The authors introduce additional relevant data with sentiment analysis of newspaper text through topic clustering. We use the Blundell-Bond panel model via GMM estimation. A major technical contribution of this project was building the blundell-bond panel model from scratch in Python. While it is available out of the box in STATA, it was not available at the time of this project in Python. Main results include the Blundell-Bond coefficients and ROC curves of the prediction accuracy.
 
-* **Luca Poll**
+## Data Sources
+We use the data provided by the authors, which includes the panel of topic clusters, levels of conflict, and other exogenous variables related to conflict prediction.
 
+## Tools
+The paper was built in Latex. The coding was done in Python, using the Pandas, Numpy, Sklearn, LinearModels, Plotly, Geopandas, Statsmodels, and Tkinter packages.
 
-## Getting Started
+<!-- ## Getting Started
 
 1. Unpack the zip folder in the directory you want to store the code in.
 2. The code can be executed in two ways: 
@@ -34,4 +38,4 @@ the descriptive plots.
 ![selectdata](select_data.png)
 
 This is all that has to be done. The console output will inform you about the progress and all results
-will be stored in the 'Report' folder.
+will be stored in the 'Report' folder. -->
