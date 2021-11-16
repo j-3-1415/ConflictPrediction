@@ -1,6 +1,6 @@
 # Conflict Prediction
 
-This project was done in collaboration with Jacob Pichelmann and Luca Poll.
+This project was done in collaboration with Andrew Boomer and Luca Poll.
 
 ## Overview
 This paper was the final project for a Panel Data class during my masters program at the Toulouse School of Economics. It was a replication and extension of the paper "Reading between the lines: Prediction of political violence using newspaper text" which can be found [here](https://www.repository.cam.ac.uk/bitstream/handle/1810/302412/mueller%20and%20rauh%202018.pdf?sequence=1). The paper investigates the limitations to conflict prediction with country specific fixed effects, such as geography, climate, and ethnic fractionalization. The authors introduce additional relevant data with sentiment analysis of newspaper text through topic clustering. We use the Blundell-Bond panel model via GMM estimation. A major technical contribution of this project was building the blundell-bond panel model from scratch in Python. While it is available out of the box in STATA, it was not available at the time of this project in Python. Main results include the Blundell-Bond coefficients and ROC curves of the prediction accuracy.
